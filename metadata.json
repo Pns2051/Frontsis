@@ -1,0 +1,6 @@
+{
+  "name": "Bondhu AI",
+  "description": "Bangladesh's first own AI companion — বন্ধু AI",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
