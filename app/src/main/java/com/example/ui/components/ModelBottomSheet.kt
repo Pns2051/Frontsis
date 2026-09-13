@@ -1,5 +1,7 @@
 package com.example.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,10 +25,13 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -50,6 +56,7 @@ fun ModelBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val colors = BondhuTheme.colors
+    val haptic = LocalHapticFeedback.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -87,6 +94,7 @@ fun ModelBottomSheet(
                 isSelected = isLightSelected,
                 icon = Icons.Default.Speed,
                 onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onModelSelect("light")
                     onDismiss()
                 },
@@ -106,6 +114,7 @@ fun ModelBottomSheet(
                 isSelected = isReasoningSelected,
                 icon = Icons.Default.Psychology,
                 onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onModelSelect("reasoning")
                     onDismiss()
                 },
@@ -128,15 +137,25 @@ private fun ModelOptionCard(
     testTag: String
 ) {
     val colors = BondhuTheme.colors
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) colors.primary else colors.border,
+        animationSpec = tween(220),
+        label = "model_card_border"
+    )
+    val bgColor by animateColorAsState(
+        targetValue = if (isSelected) colors.surfaceRaised else colors.surface,
+        animationSpec = tween(220),
+        label = "model_card_bg"
+    )
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(if (isSelected) colors.surfaceRaised else colors.surface)
+            .background(bgColor)
             .border(
-                width = 2.dp,
-                color = if (isSelected) colors.primary else colors.border,
+                width = if (isSelected) 2.dp else 1.dp,
+                color = borderColor,
                 shape = RoundedCornerShape(14.dp)
             )
             .clickable(onClick = onClick)
@@ -191,6 +210,16 @@ private fun ModelOptionCard(
                     fontFamily = HindSiliguriFamily,
                     fontSize = 13.sp,
                     color = colors.textSecondary
+                )
+            }
+
+            if (isSelected) {
+                Spacer(modifier = Modifier.width(10.dp))
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Selected",
+                    tint = colors.primary,
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }

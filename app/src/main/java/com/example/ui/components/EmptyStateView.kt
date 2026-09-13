@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -219,12 +221,17 @@ private fun RecommendationPill(
     modifier: Modifier = Modifier
 ) {
     val colors = BondhuTheme.colors
+    val haptic = LocalHapticFeedback.current
+
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .background(colors.surfaceElevated)
             .border(1.dp, colors.border, RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
             .padding(horizontal = 14.dp, vertical = 8.dp)
             .testTag("rec_pill_${chip.id}")
     ) {

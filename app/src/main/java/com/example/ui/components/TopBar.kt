@@ -32,6 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,6 +59,7 @@ fun TopBar(
     modifier: Modifier = Modifier
 ) {
     val colors = BondhuTheme.colors
+    val haptic = LocalHapticFeedback.current
     var showTooltip by remember { mutableStateOf(false) }
     val isLowCredits = credits <= 5
     val pillBg = if (colors.isDark) Color(0xFF1E1E1E) else Color(0xFFF3F4F6)
@@ -77,7 +80,10 @@ fun TopBar(
         ) {
             // Left: [☰] menu icon
             IconButton(
-                onClick = onMenuClick,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onMenuClick()
+                },
                 modifier = Modifier
                     .size(44.dp)
                     .testTag("menu_button")
@@ -162,7 +168,10 @@ fun TopBar(
 
                 // [＋] new chat
                 IconButton(
-                    onClick = onNewChatClick,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onNewChatClick()
+                    },
                     modifier = Modifier
                         .size(44.dp)
                         .testTag("new_chat_button")

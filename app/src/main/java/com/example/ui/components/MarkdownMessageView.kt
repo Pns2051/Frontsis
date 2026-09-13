@@ -120,35 +120,30 @@ fun ChatMessageItem(
     val context = LocalContext.current
     val colors = BondhuTheme.colors
 
-    AnimatedVisibility(
-        visible = true,
-        enter = fadeIn(tween(180, easing = FastOutSlowInEasing)),
-        modifier = modifier.fillMaxWidth()
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 5.dp),
+        horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
-        ) {
-            if (isUser) {
-                // User: Primary bubble, onPrimary text, right-aligned, Radius: 16dp (bottom-right 4dp)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.85f)
-                        .clip(
-                            RoundedCornerShape(
-                                topStart = 16.dp,
-                                topEnd = 16.dp,
-                                bottomStart = 16.dp,
-                                bottomEnd = 4.dp
-                            )
+        if (isUser) {
+            // User: Primary bubble, onPrimary text, right-aligned, Radius: 16dp (bottom-right 4dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = 16.dp,
+                            topEnd = 16.dp,
+                            bottomStart = 16.dp,
+                            bottomEnd = 4.dp
                         )
-                        .background(colors.primary)
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                        .testTag("user_message_bubble"),
-                    contentAlignment = Alignment.CenterStart
-                ) {
+                    )
+                    .background(colors.primary)
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .testTag("user_message_bubble"),
+                contentAlignment = Alignment.CenterStart
+            ) {
                     Column {
                         if (message.attachmentName != null) {
                             Row(
@@ -268,7 +263,7 @@ fun ChatMessageItem(
                                 }
                             }
                         } else {
-                            val parsed = extractThoughtContent(message.content)
+                            val parsed = remember(message.content) { extractThoughtContent(message.content) }
                             var thoughtExpanded by remember { mutableStateOf(parsed.isThinkingOpen) }
 
                             // Thought disclosure card for reasoning models
@@ -398,7 +393,6 @@ fun ChatMessageItem(
             }
         }
     }
-}
 
 /**
  * Parses markdown into clean Compose text, bold, inline code, lists, and code blocks
@@ -411,7 +405,7 @@ private fun MarkdownTextRenderer(
 ) {
     if (content.isBlank()) return
 
-    val blocks = splitMarkdownBlocks(content)
+    val blocks = remember(content) { splitMarkdownBlocks(content) }
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         blocks.forEach { block ->
@@ -472,8 +466,9 @@ private fun MarkdownTextRenderer(
                 }
 
                 is MarkdownBlock.Paragraph -> {
+                    val formattedText = remember(block.text, colors) { formatInlineMarkdown(block.text, colors) }
                     Text(
-                        text = formatInlineMarkdown(block.text, colors),
+                        text = formattedText,
                         fontFamily = HindSiliguriFamily,
                         fontSize = 15.sp,
                         color = colors.textPrimary,
@@ -482,6 +477,7 @@ private fun MarkdownTextRenderer(
                 }
 
                 is MarkdownBlock.ListItem -> {
+                    val formattedText = remember(block.text, colors) { formatInlineMarkdown(block.text, colors) }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.Top
@@ -494,7 +490,7 @@ private fun MarkdownTextRenderer(
                             color = colors.primary
                         )
                         Text(
-                            text = formatInlineMarkdown(block.text, colors),
+                            text = formattedText,
                             fontFamily = HindSiliguriFamily,
                             fontSize = 15.sp,
                             color = colors.textPrimary,

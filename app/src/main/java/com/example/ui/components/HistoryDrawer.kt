@@ -44,6 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -81,6 +83,7 @@ fun HistoryDrawerContent(
 ) {
     var sessionToDelete by remember { mutableStateOf<ChatSession?>(null) }
     val colors = BondhuTheme.colors
+    val haptic = LocalHapticFeedback.current
 
     Column(
         modifier = modifier
@@ -100,7 +103,10 @@ fun HistoryDrawerContent(
 
         // [New Chat] Button
         Button(
-            onClick = onNewChatClick,
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onNewChatClick()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp)
@@ -204,6 +210,7 @@ fun HistoryDrawerContent(
                     val isActive = session.id == currentSessionId
                     Box(
                         modifier = Modifier
+                            .animateItem()
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (isActive) colors.surfaceRaised else Color.Transparent)
@@ -216,7 +223,10 @@ fun HistoryDrawerContent(
                                     )
                                 } else Modifier
                             )
-                            .clickable { onSessionClick(session) }
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onSessionClick(session)
+                            }
                             .padding(horizontal = 10.dp, vertical = 8.dp)
                             .testTag("session_item_${session.id}")
                     ) {

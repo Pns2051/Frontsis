@@ -76,9 +76,21 @@ fun ChatScreen(
         }
     }
 
-    LaunchedEffect(uiState.messages.size, uiState.messages.lastOrNull()?.content) {
+    // Smooth scroll for new message
+    LaunchedEffect(uiState.messages.size) {
         if (isNearBottom && uiState.messages.isNotEmpty()) {
             listState.animateScrollToItem(uiState.messages.size - 1)
+        }
+    }
+
+    // High-performance streaming scroll (avoids physics animation conflicts on every token)
+    LaunchedEffect(uiState.messages.lastOrNull()?.content) {
+        if (isNearBottom && uiState.messages.isNotEmpty()) {
+            if (uiState.isStreaming) {
+                listState.scrollToItem(uiState.messages.size - 1)
+            } else {
+                listState.animateScrollToItem(uiState.messages.size - 1)
+            }
         }
     }
 
@@ -203,7 +215,8 @@ fun ChatScreen(
                                 isColdStart = uiState.isWakingUp,
                                 onRetry = { retryPrompt ->
                                     viewModel.sendMessage(retryPrompt)
-                                }
+                                },
+                                modifier = Modifier.animateItem()
                             )
                         }
 

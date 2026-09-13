@@ -6,11 +6,21 @@ import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -101,6 +111,7 @@ fun ComposerView(
 ) {
     val colors = BondhuTheme.colors
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     var attachedFile by remember { mutableStateOf<AttachedFileInfo?>(null) }
 
     // File Picker for attachments (text, pdf, images)
@@ -304,50 +315,68 @@ fun ComposerView(
 
                 Spacer(modifier = Modifier.width(4.dp))
 
-                // Action Button: [➤] 40dp circle or Streaming: [■] 40dp circle
-                if (isStreaming) {
-                    // Streaming: [■] 40dp circle, white square
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(colors.error)
-                            .clickable(onClick = onStop)
-                            .testTag("stop_button"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Stop,
-                            contentDescription = Strings.stop(language),
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                } else {
-                    // [➤] 40dp circle, white arrow
-                    val canSend = text.isNotBlank() || attachedFile != null
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(if (canSend) colors.primary else colors.surfaceElevated)
-                            .clickable(enabled = canSend) {
-                                if (canSend) {
-                                    val currentText = text.trim()
-                                    val file = attachedFile
-                                    attachedFile = null
-                                    onSend(currentText, file)
+                // Action Button: [➤] Send or [■] Stop with smooth spring transition
+                AnimatedContent(
+                    targetState = isStreaming,
+                    transitionSpec = {
+                        (scaleIn(spring(Spring.DampingRatioMediumBouncy)) + fadeIn()) togetherWith
+                                (scaleOut() + fadeOut())
+                    },
+                    label = "composer_action_button"
+                ) { streaming ->
+                    if (streaming) {
+                        // Streaming: [■] 40dp circle, white square
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(colors.error)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onStop()
                                 }
-                            }
-                            .testTag("send_button"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = Strings.send(language),
-                            tint = if (canSend) colors.onPrimary else colors.textTertiary,
-                            modifier = Modifier.size(18.dp)
+                                .testTag("stop_button"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Stop,
+                                contentDescription = Strings.stop(language),
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    } else {
+                        val canSend = text.isNotBlank() || attachedFile != null
+                        val buttonScale by animateFloatAsState(
+                            targetValue = if (canSend) 1f else 0.94f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                            label = "send_button_scale"
                         )
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .scale(buttonScale)
+                                .clip(CircleShape)
+                                .background(if (canSend) colors.primary else colors.surfaceElevated)
+                                .clickable(enabled = canSend) {
+                                    if (canSend) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        val currentText = text.trim()
+                                        val file = attachedFile
+                                        attachedFile = null
+                                        onSend(currentText, file)
+                                    }
+                                }
+                                .testTag("send_button"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = Strings.send(language),
+                                tint = if (canSend) colors.onPrimary else colors.textTertiary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
