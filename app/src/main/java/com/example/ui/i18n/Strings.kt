@@ -1,146 +1,172 @@
 package com.example.ui.i18n
 
 object Strings {
-    fun appName(lang: String): String = if (lang == "bn") "বন্ধু AI" else "Bondhu AI"
-    fun tagline(lang: String): String = if (lang == "bn") "বাংলাদেশের নিজস্ব প্রথম AI" else "Bangladesh's first own AI"
-    fun welcomeGreeting(lang: String): String = if (lang == "bn") "আজ আপনার জন্য কী বানাতে পারি?" else "What can I build for you?"
-    fun welcomeToast(lang: String): String = if (lang == "bn") "স্বাগতম, বন্ধু! 👋" else "Welcome to Bondhu AI"
+    // App & Tagline
+    fun appName(lang: String): String = "বন্ধু·AI"
+    fun splashSub(lang: String): String = if (lang == "bn") "বাংলাদেশের নিজের AI" else "Bangladesh's own AI"
 
-    fun typingNormal(lang: String): String = if (lang == "bn") "বন্ধু চিন্তা করছে…" else "Thinking…"
-    fun wakingUp(lang: String): String = if (lang == "bn") "বন্ধু জেগে উঠছে… এক মিনিট পর্যন্ত সময় লাগতে পারে ☕" else "Waking up server… this can take up to a minute ☕"
+    // Models
+    fun modelLight(lang: String): String = if (lang == "bn") "Bondhu Light" else "Bondhu Light"
+    fun modelLightBadge(lang: String): String = if (lang == "bn") "ডিফল্ট" else "Default"
+    fun modelLightDesc(lang: String): String = if (lang == "bn") "দ্রুত — দৈনন্দিন কথা" else "Fast — for everyday chat"
 
-    fun composerPlaceholder(lang: String): String = if (lang == "bn") "আজ আপনাকে কীভাবে সাহায্য করতে পারি?" else "How can I help you today?"
-    fun fileUploadComingSoon(lang: String): String = if (lang == "bn") "📎 ফাইল আপলোড শীঘ্রই আসছে!" else "📎 Attachments coming soon"
+    fun modelReasoning(lang: String): String = if (lang == "bn") "Bondhu 5.3 Reasoning" else "Bondhu 5.3 Reasoning"
+    fun modelReasoningBadge(lang: String): String = if (lang == "bn") "অ্যাডভান্সড" else "Advanced"
+    fun modelReasoningDesc(lang: String): String = if (lang == "bn") "গভীর চিন্তা — গণিত, কোড, বিশ্লেষণ" else "Deep thinking — math, code, analysis"
 
+    fun selectModel(lang: String): String = if (lang == "bn") "Select AI Model" else "Select AI Model"
+
+    // Onboarding 4 Steps
+    fun onboardingStep1Title(lang: String): String = if (lang == "bn") "ভাষা বেছে নাও" else "Choose your language"
+    fun onboardingStep1Sub(lang: String): String = if (lang == "bn") "তোমার পছন্দের ভাষা নির্বাচন করো" else "Select your preferred language"
+
+    fun onboardingStep2Title(lang: String): String = if (lang == "bn") "তোমার নাম কী?" else "What's your name?"
+    fun onboardingStep2Placeholder(lang: String): String = if (lang == "bn") "তোমার নাম" else "Your name"
+    fun onboardingStep2Validation(lang: String): String = if (lang == "bn") "অনুগ্রহ করে তোমার নাম লেখো" else "Please enter your name"
+
+    fun onboardingStep3Title(lang: String): String = if (lang == "bn") "শুরু করো" else "Let's get started"
+    fun googleSignIn(lang: String): String = "Continue with Google"
+    fun continueWithEmail(lang: String): String = if (lang == "bn") "ইমেইল দিয়ে প্রবেশ করো" else "Continue with Email"
+    fun emailLabel(lang: String): String = if (lang == "bn") "ইমেইল ঠিকানা" else "Email address"
+    fun passwordLabel(lang: String): String = if (lang == "bn") "পাসওয়ার্ড" else "Password"
+    fun signIn(lang: String): String = if (lang == "bn") "সাইন ইন" else "Sign In"
+    fun signUp(lang: String): String = if (lang == "bn") "নতুন অ্যাকাউন্ট তৈরি" else "Create Account"
+    fun orDivider(lang: String): String = if (lang == "bn") "অথবা" else "or"
+    fun continueAsGuest(lang: String): String = if (lang == "bn") "Continue as guest" else "Continue as guest"
+    fun guestModeDisclaimer(lang: String): String = if (lang == "bn") "Guest mode: credits & history stored on this device" else "Guest mode: credits & history stored on this device"
+
+    fun onboardingStep4Title(lang: String): String = if (lang == "bn") "শেষ একটা ধাপ" else "One last step"
+    fun onboardingStep4Sub(lang: String): String = if (lang == "bn") "Accept to continue" else "Accept to continue"
+    fun checkboxPrivacy(lang: String): String = if (lang == "bn") "I accept the Privacy Policy" else "I accept the Privacy Policy"
+    fun checkboxTerms(lang: String): String = if (lang == "bn") "I accept the Terms of Service" else "I accept the Terms of Service"
+    fun getStarted(lang: String): String = if (lang == "bn") "শুরু করো" else "Get Started"
+    const val PRIVACY_URL = "https://boundhu-ai.vercel.app/privacy.html"
+    const val TERMS_URL = "https://boundhu-ai.vercel.app/terms.html"
+
+    fun next(lang: String): String = if (lang == "bn") "পরবর্তী" else "Next"
+    fun back(lang: String): String = if (lang == "bn") "পেছনে" else "Back"
+
+    // Main Chat - Top Bar
+    fun creditsTooltip(lang: String): String = if (lang == "bn") "রোজ রাত ১২টায় +১০ রিফিল" else "+10 daily refill at midnight"
     fun newChat(lang: String): String = if (lang == "bn") "নতুন চ্যাট" else "New Chat"
-    fun historyTitle(lang: String): String = if (lang == "bn") "কথোপকথনের ইতিহাস" else "Chat History"
-    fun noHistory(lang: String): String = if (lang == "bn") "এখনও কোনো অতীত চ্যাট নেই" else "No past chats yet"
-    fun messagesCount(count: Int, lang: String): String {
-        return if (lang == "bn") {
-            "${toBanglaDigits(count)}টি মেসেজ"
-        } else {
-            "$count messages"
-        }
+
+    // Empty State (Strictly Gemini-style & user-requested: "Hi, [name]! I'm Bondhu — your AI friend. Ask away.")
+    fun greeting(name: String, lang: String): String {
+        val cleanName = name.trim().ifBlank { if (lang == "bn") "Friend" else "Friend" }
+        return "Hi, $cleanName!"
     }
 
-    fun deleteConfirmTitle(lang: String): String = if (lang == "bn") "চ্যাট মুছবেন?" else "Delete chat?"
-    fun deleteConfirmMessage(lang: String): String = if (lang == "bn") "এই আলাপটি মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না।" else "Are you sure you want to delete this chat? This cannot be undone."
-    fun deleteButton(lang: String): String = if (lang == "bn") "মুছে ফেলুন" else "Delete"
-    fun cancelButton(lang: String): String = if (lang == "bn") "বাতিল" else "Cancel"
+    fun emptySub(lang: String): String = "I'm Bondhu — your AI friend. Ask away."
 
-    fun copy(lang: String): String = if (lang == "bn") "কপি করুন" else "Copy"
-    fun copied(lang: String): String = if (lang == "bn") "কপি করা হয়েছে!" else "Copied to clipboard!"
-    fun sendAgain(lang: String): String = if (lang == "bn") "আবার পাঠান" else "Send again"
-    fun stopGenerating(lang: String): String = if (lang == "bn") "বন্ধ করুন" else "Stop"
-
-    fun speak(lang: String): String = if (lang == "bn") "শুনুন" else "Read Aloud"
-    fun stopSpeaking(lang: String): String = if (lang == "bn") "পড়া থামান" else "Stop"
-    fun share(lang: String): String = if (lang == "bn") "শেয়ার করুন" else "Share"
-    fun shareConversation(lang: String): String = if (lang == "bn") "পুরো আলাপ শেয়ার করুন" else "Share Conversation"
-    fun regenerate(lang: String): String = if (lang == "bn") "পুনরায় তৈরি করুন" else "Regenerate"
-    fun voiceInput(lang: String): String = if (lang == "bn") "কথা বলুন" else "Voice Input"
-    fun listening(lang: String): String = if (lang == "bn") "শুনছি..." else "Listening..."
-    fun speechNotAvailable(lang: String): String = if (lang == "bn") "ভয়েস ইনপুট সমর্থিত নয়" else "Voice input not supported"
-
-    fun categoryAll(lang: String): String = if (lang == "bn") "সব" else "All"
-    fun categoryCoding(lang: String): String = if (lang == "bn") "প্রোগ্রামিং" else "Coding"
-    fun categoryBengali(lang: String): String = if (lang == "bn") "বাংলাদেশ ও সংস্কৃতি" else "Bangla & Culture"
-    fun categoryWriting(lang: String): String = if (lang == "bn") "লেখালেখি" else "Writing"
-    fun categoryLearning(lang: String): String = if (lang == "bn") "জ্ঞান ও শিক্ষা" else "Learning"
-
-    fun selectLanguage(lang: String): String = if (lang == "bn") "ভাষা নির্বাচন করুন" else "Select Language"
-    fun confirm(lang: String): String = if (lang == "bn") "শুরু করুন" else "Get Started"
-
-    fun settingsTitle(lang: String): String = if (lang == "bn") "সেটিংস" else "Settings"
-    fun languageLabel(lang: String): String = if (lang == "bn") "ভাষা" else "Language"
-    fun darkModeLabel(lang: String): String = if (lang == "bn") "ডার্ক মোড" else "Dark Mode"
-    fun creditsLabel(lang: String): String = if (lang == "bn") "ক্রেডিট" else "Credits"
-    fun creditsExplainer(lang: String): String = if (lang == "bn") "রোজ রাত ১২টায় (ঢাকার সময়) ১০টি ফ্রি মেসেজ যোগ হয়" else "Every day at midnight (Dhaka time) you get 10 free messages"
-    fun aboutTitle(lang: String): String = if (lang == "bn") "বন্ধু AI সম্পর্কে" else "About Bondhu AI"
-    fun aboutStory(lang: String): String = if (lang == "bn") {
-        "বাংলাদেশের নিজস্ব প্রথম AI। তৈরি বাংলাদেশে, বাংলাদেশের জন্য — বাংলা, ইংরেজি এবং বাংলিশে পারদর্শী।\nসংস্করণ ১.০"
-    } else {
-        "Bangladesh's first own AI. Made in Bangladesh, for Bangladesh — speaking Bangla, English, and Banglish.\nVersion 1.0"
-    }
-    fun shareApp(lang: String): String = if (lang == "bn") "অ্যাপ শেয়ার করুন" else "Share App"
-    fun shareText(lang: String): String = if (lang == "bn") "বাংলাদেশের নিজস্ব প্রথম AI — বন্ধু AI ব্যবহার করে দেখুন: https://bondhu-ai-backed-beta26.onrender.com" else "Check out Bondhu AI — Bangladesh's first own AI: https://bondhu-ai-backed-beta26.onrender.com"
-
-    fun restrictedTitle(lang: String): String = if (lang == "bn") "অ্যাকাউন্ট সীমিত" else "Account Restricted"
-    fun restrictedMessage(lang: String): String = if (lang == "bn") "আপনার অ্যাকাউন্টটি সাময়িকভাবে সীমিত করা হয়েছে। সহায়তার জন্য যোগাযোগ করুন।" else "Your account has been temporarily restricted. Please contact support."
-
-    // Suggestions chips (always 4)
+    // 4 Suggestion Chips
     fun suggestions(lang: String): List<String> = listOf(
-        "Write a poem about Dhaka",
-        "Explain physics simply",
-        "রান্নার রেসিপি দাও",
-        "Help me with English grammar"
+        "Today's news",
+        "Math help",
+        "Write a story",
+        "Learn English"
     )
 
+    fun suggestionPrompt(chip: String, lang: String): String {
+        return if (lang == "bn") {
+            when (chip) {
+                "Today's news" -> "আজকের গুরুত্বপূর্ণ প্রধান খবর ও সমসাময়িক বিষয়গুলো সংক্ষেপে জানাও।"
+                "Math help" -> "গণিতের একটি দরকারি সমস্যা সহজে সমাধানের কৌশল ও উদাহরণ ব্যাখ্যা করো।"
+                "Write a story" -> "বাংলার স্নিগ্ধ প্রকৃতি ও নদীর পাড় নিয়ে চমৎকার একটি ছোট গল্প লেখো।"
+                "Learn English" -> "দৈনন্দিন কথোপকথনে বহুল ব্যবহৃত ১০টি দরকারি ইংরেজি বাক্য ও অর্থ শেখাও।"
+                else -> chip
+            }
+        } else {
+            when (chip) {
+                "Today's news" -> "Summarize today's top news and current events briefly."
+                "Math help" -> "Explain a helpful math problem-solving technique with a clear example."
+                "Write a story" -> "Write an inspiring short creative story about nature and exploration."
+                "Learn English" -> "Share 10 useful conversational English phrases with practical examples."
+                else -> chip
+            }
+        }
+    }
+
+    // Composer
+    fun composerPlaceholder(lang: String): String = "Type a message…"
+    fun send(lang: String): String = if (lang == "bn") "পাঠাও" else "Send"
+    fun stop(lang: String): String = if (lang == "bn") "থামাও" else "Stop"
+    fun attachFile(lang: String): String = if (lang == "bn") "ফাইল যুক্ত করো" else "Attach file"
+    fun removeAttachment(lang: String): String = if (lang == "bn") "মুছে ফেলো" else "Remove"
+    fun fileSizeLimit(lang: String): String = if (lang == "bn") "ফাইলের সাইজ ৫MB এর বেশি হতে পারবে না" else "File must be under 5MB"
+
+    // Streaming & Typing
+    fun typing(lang: String): String = "Bondhu is thinking…"
+    fun thinking(lang: String): String = "Bondhu is thinking…"
+    fun thinkingProcess(lang: String): String = "Thinking Process"
+    fun thinkingDone(lang: String): String = "Thinking complete"
+    fun generating(lang: String): String = "Writing…"
+    fun coldStart(lang: String): String = "Bondhu is waking up… ☕"
+
+    // Drawer
+    fun history(lang: String): String = "History"
+    fun noHistory(lang: String): String = "No chats yet"
+    fun guest(lang: String): String = "Guest"
+    fun deleteChatTitle(lang: String): String = if (lang == "bn") "চ্যাট মুছবেন?" else "Delete chat?"
+    fun deleteChatMsg(lang: String): String = if (lang == "bn") "এই কথোপকথনটি মুছে ফেলা হবে।" else "This conversation will be permanently deleted."
+    fun cancel(lang: String): String = if (lang == "bn") "বাতিল" else "Cancel"
+    fun delete(lang: String): String = if (lang == "bn") "মুছুন" else "Delete"
+
+    // Settings
+    fun settings(lang: String): String = "Settings"
+    fun account(lang: String): String = "ACCOUNT"
+    fun signInMode(lang: String): String = "Sign-in mode"
+    fun connectGoogle(lang: String): String = "Connect Google"
+    fun nameLabel(lang: String): String = "Name"
+    fun save(lang: String): String = if (lang == "bn") "সংরক্ষণ" else "Save"
+    fun saved(lang: String): String = if (lang == "bn") "সংরক্ষিত হয়েছে" else "Saved"
+    fun profileDesc(lang: String): String = "Profile description"
+    fun profileDescPlaceholder(lang: String): String = "Tell Bondhu how you'd like to be addressed..."
+
+    fun aiModel(lang: String): String = "AI MODEL"
+    fun appearance(lang: String): String = "APPEARANCE"
+    fun theme(lang: String): String = "Theme"
+    fun themeLight(lang: String): String = "☀️ Light"
+    fun themeDark(lang: String): String = "🌙 Dark"
+    fun font(lang: String): String = "Font"
+    fun fontSmall(lang: String): String = "Small"
+    fun fontNormal(lang: String): String = "Normal"
+    fun fontLarge(lang: String): String = "Large"
+    fun animations(lang: String): String = "Animations"
+    fun animationsOn(lang: String): String = "On"
+    fun animationsOff(lang: String): String = "Off"
+
+    fun customApi(lang: String): String = "CUSTOM API"
+    fun customApiNote(lang: String): String = "Your key stays on your device only"
+    fun endpointLabel(lang: String): String = "Endpoint"
+    fun apiKeyLabel(lang: String): String = "API Key"
+    fun testButton(lang: String): String = "Test"
+    fun removeKeyButton(lang: String): String = "Remove"
+
+    fun legal(lang: String): String = "LEGAL"
+    fun privacyPolicy(lang: String): String = "Privacy Policy"
+    fun termsOfService(lang: String): String = "Terms of Service"
+    fun logoutReset(lang: String): String = "Log out / Reset"
+
+    // Markdown Copy
+    fun copy(lang: String): String = "Copy"
+    fun copied(lang: String): String = "Copied"
+
     // Error messages
-    fun error400(lang: String): String = if (lang == "bn") "কিছু ভুল হয়েছে — আবার চেষ্টা করুন" else "Something went wrong — please try again"
-    fun error402(lang: String): String = if (lang == "bn") "ফ্রি মেসেজ শেষ! রাত ১২টায় আরও ১০টি যোগ হবে 🌙" else "Out of free messages — +10 more at midnight 🌙"
-    fun error403(lang: String): String = if (lang == "bn") "আপনার অ্যাকাউন্ট সীমিত হয়েছে" else "Access restricted"
-    fun error429(lang: String): String = if (lang == "bn") "একটু দ্রুত বার্তা পাঠাচ্ছেন! এক মিনিট অপেক্ষা করুন" else "Sending too fast! Wait a minute"
-    fun error503(lang: String): String = if (lang == "bn") "বন্ধু এখন ব্যস্ত — একটু পরে আবার চেষ্টা করুন" else "Bondhu is busy right now — try again soon"
-    fun errorGeneral(lang: String): String = if (lang == "bn") "সংযোগ বিচ্ছিন্ন হয়েছে — আবার চেষ্টা করুন" else "Connection lost — please try again"
-    fun charCountLimit(current: Int, max: Int, lang: String): String = "${toBanglaDigitsIfBn(current, lang)} / ${toBanglaDigitsIfBn(max, lang)}"
+    fun errorGeneral(lang: String): String = errorGeneric(lang)
+    fun apiConfigSaved(lang: String): String = if (lang == "bn") "API কনফিগারেশন সংরক্ষিত হয়েছে" else "API configuration saved"
 
-    fun formatRelativeTime(dateStr: String?, lang: String): String {
-        if (dateStr.isNullOrBlank()) return ""
-        try {
-            // Parses ISO date or timestamps
-            val millis: Long = try {
-                java.time.Instant.parse(dateStr).toEpochMilli()
-            } catch (e: Exception) {
-                try {
-                    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
-                    sdf.parse(dateStr)?.time ?: System.currentTimeMillis()
-                } catch (e2: Exception) {
-                    System.currentTimeMillis()
-                }
-            }
-            val diff = System.currentTimeMillis() - millis
-            val minutes = diff / (1000 * 60)
-            val hours = minutes / 60
-            val days = hours / 24
-
-            return if (lang == "bn") {
-                when {
-                    minutes < 1 -> "এইমাত্র"
-                    minutes < 60 -> "${toBanglaDigits(minutes.toInt())} মিনিট আগে"
-                    hours < 24 -> "${toBanglaDigits(hours.toInt())} ঘণ্টা আগে"
-                    days < 7 -> "${toBanglaDigits(days.toInt())} দিন আগে"
-                    else -> "কিছুদিন আগে"
-                }
-            } else {
-                when {
-                    minutes < 1 -> "just now"
-                    minutes < 60 -> "${minutes}m ago"
-                    hours < 24 -> "${hours}h ago"
-                    days < 7 -> "${days}d ago"
-                    else -> "days ago"
-                }
-            }
-        } catch (e: Exception) {
-            return ""
+    fun formatHttpError(err: String, lang: String): String {
+        return when {
+            err.contains("402") || err.contains("credit") -> errorOutOfCredits(lang)
+            err.contains("429") || err.contains("rate") -> errorRateLimit(lang)
+            err.contains("503") || err.contains("busy") -> errorServiceBusy(lang)
+            else -> if (err.isNotBlank() && !err.startsWith("HTTP_")) err else errorGeneric(lang)
         }
     }
 
-    fun toBanglaDigits(num: Int): String {
-        val bnDigits = charArrayOf('০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯')
-        val str = num.toString()
-        val sb = java.lang.StringBuilder()
-        for (c in str) {
-            if (c in '0'..'9') {
-                sb.append(bnDigits[c - '0'])
-            } else {
-                sb.append(c)
-            }
-        }
-        return sb.toString()
-    }
-
-    fun toBanglaDigitsIfBn(num: Int, lang: String): String {
-        return if (lang == "bn") toBanglaDigits(num) else num.toString()
-    }
+    fun errorOutOfCredits(lang: String): String = "আজকের ফ্রি ক্রেডিট শেষ হয়ে গেছে। রাত ১২টায় আবার ১০টি ক্রেডিট রিফিল হবে।"
+    fun errorRateLimit(lang: String): String = "একটু দ্রুত বেশি অনুরোধ পাঠানো হয়েছে। কয়েক সেকেন্ড পর আবার চেষ্টা করো।"
+    fun errorServiceBusy(lang: String): String = "সার্ভার এই মুহূর্তে ব্যস্ত আছে। অনুগ্রহ করে কিছুক্ষণ পর চেষ্টা করো।"
+    fun errorGeneric(lang: String): String = "দুঃখিত, সংযোগে সমস্যা হয়েছে। আবার চেষ্টা করো।"
+    fun retry(lang: String): String = "পুনরায় চেষ্টা"
 }

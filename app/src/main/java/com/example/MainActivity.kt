@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -11,9 +13,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.ui.components.BannedScreen
 import com.example.ui.components.ChatScreen
-import com.example.ui.components.LanguageSelectScreen
+import com.example.ui.components.OnboardingScreen
 import com.example.ui.components.SplashScreen
 import com.example.ui.theme.BondhuTheme
 import com.example.ui.viewmodel.AppStage
@@ -35,25 +36,46 @@ fun BondhuApp(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    BondhuTheme(darkTheme = uiState.isDarkMode) {
+    BondhuTheme(themeMode = uiState.themeMode) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            when (uiState.stage) {
-                AppStage.SPLASH -> {
-                    SplashScreen()
-                }
+            Crossfade(
+                targetState = uiState.stage,
+                animationSpec = tween(300),
+                label = "app_stage_crossfade"
+            ) { stage ->
+                when (stage) {
+                    AppStage.SPLASH -> {
+                        SplashScreen(
+                            language = uiState.language,
+                            onFinished = { viewModel.onSplashComplete() }
+                        )
+                    }
 
-                AppStage.LANGUAGE_SELECT -> {
-                    LanguageSelectScreen(
-                        onLanguageSelected = { lang ->
-                            viewModel.selectInitialLanguage(lang)
-                        }
-                    )
-                }
+                    AppStage.ONBOARDING -> {
+                        OnboardingScreen(
+                            currentLanguage = uiState.language,
+                            onLanguageChange = { lang -> viewModel.setLanguage(lang) },
+                            onFinishOnboarding = { name -> viewModel.completeOnboarding(name) },
+                            onGoogleSignInSuccess = { account ->
+                                viewModel.signInWithGoogleAccount(account) { success, err ->
+                                    if (!success && err != null) {
+                                        viewModel.showToast(err)
+                                    }
+                                }
+                            },
+                            onEmailSignIn = { email, pass, onResult ->
+                                viewModel.signInWithEmail(email, pass, onResult)
+                            },
+                            onEmailSignUp = { name, email, pass, onResult ->
+                                viewModel.signUpWithEmail(name, email, pass, onResult)
+                            },
+                            onAnonymousSignIn = { onResult ->
+                                viewModel.signInAnonymously(onResult)
+                            }
+                        )
+                    }
 
-                AppStage.CHAT -> {
-                    if (uiState.isBanned) {
-                        BannedScreen(language = uiState.language)
-                    } else {
+                    AppStage.CHAT -> {
                         ChatScreen(
                             viewModel = viewModel,
                             uiState = uiState

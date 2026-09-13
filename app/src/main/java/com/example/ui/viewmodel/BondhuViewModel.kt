@@ -1,14 +1,18 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.auth.AuthManager
 import com.example.data.local.BondhuPreferences
 import com.example.data.model.ChatMessage
 import com.example.data.model.ChatSession
 import com.example.data.model.StreamEvent
 import com.example.data.remote.BondhuApiService
+import com.example.ui.components.AttachedFileInfo
 import com.example.ui.i18n.Strings
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,16 +23,21 @@ import kotlinx.coroutines.launch
 
 enum class AppStage {
     SPLASH,
-    LANGUAGE_SELECT,
+    ONBOARDING,
     CHAT
 }
 
 data class BondhuUiState(
     val stage: AppStage = AppStage.SPLASH,
-    val language: String = "en",
-    val isDarkMode: Boolean = false,
+    val language: String = "bn",
+    val themeMode: String = "system", // "light", "dark", "system"
+    val isDarkMode: Boolean = true,
+    val selectedModel: String = "light", // "light" | "reasoning"
     val deviceId: String = "",
-    val credits: Int = 50,
+    val userName: String = "",
+    val userEmail: String = "",
+    val loginType: String = "guest",
+    val credits: Int = 42,
     val isBanned: Boolean = false,
     val currentSessionId: String? = null,
     val activeSessionTitle: String? = null,
@@ -39,11 +48,12 @@ data class BondhuUiState(
     val sessions: List<ChatSession> = emptyList(),
     val isHistoryDrawerOpen: Boolean = false,
     val isSettingsOpen: Boolean = false,
-    val isCreditsInfoOpen: Boolean = false,
-    val sessionToDelete: ChatSession? = null,
-    val toastMessage: String? = null,
-    val selectedModel: String = "Bondhu-5.3",
-    val isCookingSoonDialogOpen: Boolean = false
+    val isModelSheetOpen: Boolean = false,
+    val isCustomApiEnabled: Boolean = false,
+    val customApiEndpoint: String = "https://api.openai.com/v1",
+    val customApiKey: String = "",
+    val customApiModel: String = "gpt-4o-mini",
+    val toastMessage: String? = null
 )
 
 class BondhuViewModel(application: Application) : AndroidViewModel(application) {
@@ -52,9 +62,19 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _uiState = MutableStateFlow(
         BondhuUiState(
+            stage = AppStage.SPLASH,
             language = prefs.getLanguage(),
+            themeMode = prefs.getTheme(),
             isDarkMode = prefs.isDarkMode(),
-            deviceId = prefs.getDeviceId()
+            selectedModel = prefs.getModel(),
+            deviceId = prefs.getDeviceId(),
+            userName = prefs.getUserName(),
+            userEmail = prefs.getUserEmail(),
+            loginType = prefs.getLoginType(),
+            isCustomApiEnabled = prefs.isCustomApiEnabled(),
+            customApiEndpoint = prefs.getCustomApiEndpoint(),
+            customApiKey = prefs.getCustomApiKey(),
+            customApiModel = prefs.getCustomApiModel()
         )
     )
     val uiState: StateFlow<BondhuUiState> = _uiState.asStateFlow()
@@ -63,15 +83,31 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
     private var wakingUpJob: Job? = null
 
     init {
-        // Splash sequence with cinematic rising red sun (~2.8s)
-        viewModelScope.launch {
-            delay(2800)
-            _uiState.update { current ->
-                current.copy(stage = AppStage.CHAT)
-            }
-        }
+        loadCreditsAndSessions()
+    }
 
-        // Fetch initial credits and sessions
+    /**
+     * Called when splash finishes:
+     * New user -> Onboarding (4 steps)
+     * Returning user -> Chat directly
+     */
+    fun onSplashComplete() {
+        val hasOnboarded = prefs.isOnboardingCompleted()
+        _uiState.update {
+            it.copy(stage = if (hasOnboarded) AppStage.CHAT else AppStage.ONBOARDING)
+        }
+    }
+
+    fun completeOnboarding(name: String) {
+        val trimmed = name.trim().ifBlank { if (_uiState.value.language == "bn") "বন্ধু" else "Friend" }
+        prefs.setUserName(trimmed)
+        prefs.setOnboardingCompleted(true)
+        _uiState.update {
+            it.copy(
+                userName = trimmed,
+                stage = AppStage.CHAT
+            )
+        }
         loadCreditsAndSessions()
     }
 
@@ -95,15 +131,10 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun selectInitialLanguage(lang: String) {
-        prefs.setLanguage(lang)
-        _uiState.update {
-            it.copy(
-                language = lang,
-                stage = AppStage.CHAT,
-                toastMessage = Strings.welcomeToast(lang)
-            )
-        }
+    fun saveUserName(name: String) {
+        val clean = name.trim()
+        prefs.setUserName(clean)
+        _uiState.update { it.copy(userName = clean) }
     }
 
     fun setLanguage(lang: String) {
@@ -111,34 +142,31 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(language = lang) }
     }
 
-    fun toggleDarkMode() {
-        val newMode = !_uiState.value.isDarkMode
-        prefs.setDarkMode(newMode)
-        _uiState.update { it.copy(isDarkMode = newMode) }
+    fun setThemeMode(mode: String) {
+        prefs.setTheme(mode)
+        val isDark = when (mode) {
+            "light" -> false
+            "dark" -> true
+            else -> true
+        }
+        _uiState.update { it.copy(themeMode = mode, isDarkMode = isDark) }
+    }
+
+    fun selectModel(model: String) {
+        prefs.setModel(model)
+        _uiState.update { it.copy(selectedModel = model) }
     }
 
     fun onInputTextChanged(text: String) {
-        if (text.length <= 4000) {
-            _uiState.update { it.copy(inputText = text) }
-        }
-    }
-
-    fun fillComposer(text: String) {
         _uiState.update { it.copy(inputText = text) }
     }
 
-    fun showToast(message: String) {
-        _uiState.update { it.copy(toastMessage = message) }
-        viewModelScope.launch {
-            delay(2500)
-            _uiState.update {
-                if (it.toastMessage == message) it.copy(toastMessage = null) else it
-            }
-        }
+    fun openModelSheet(open: Boolean) {
+        _uiState.update { it.copy(isModelSheetOpen = open) }
     }
 
-    fun clearToast() {
-        _uiState.update { it.copy(toastMessage = null) }
+    fun openSettings(open: Boolean) {
+        _uiState.update { it.copy(isSettingsOpen = open) }
     }
 
     fun openHistoryDrawer(open: Boolean) {
@@ -146,18 +174,6 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
         if (open) {
             refreshSessions()
         }
-    }
-
-    fun openSettings(open: Boolean) {
-        _uiState.update { it.copy(isSettingsOpen = open) }
-    }
-
-    fun openCreditsInfo(open: Boolean) {
-        _uiState.update { it.copy(isCreditsInfoOpen = open) }
-    }
-
-    fun setSessionToDelete(session: ChatSession?) {
-        _uiState.update { it.copy(sessionToDelete = session) }
     }
 
     fun startNewChat() {
@@ -186,14 +202,13 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val messages = api.getHistory(deviceId, session.id)
                 _uiState.update { it.copy(messages = messages) }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 showToast(Strings.errorGeneral(_uiState.value.language))
             }
         }
     }
 
-    fun confirmDeleteSession() {
-        val session = _uiState.value.sessionToDelete ?: return
+    fun deleteSession(session: ChatSession) {
         val deviceId = _uiState.value.deviceId
         viewModelScope.launch {
             try {
@@ -205,7 +220,6 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
                     refreshSessions()
                 }
             } catch (_: Exception) {}
-            _uiState.update { it.copy(sessionToDelete = null) }
         }
     }
 
@@ -219,6 +233,167 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun deleteAllData() {
+        stopGeneration()
+        prefs.resetAll()
+        _uiState.update {
+            BondhuUiState(
+                stage = AppStage.ONBOARDING,
+                language = "bn",
+                themeMode = "dark",
+                isDarkMode = true,
+                deviceId = prefs.getDeviceId()
+            )
+        }
+    }
+
+    fun setCustomApiConfig(enabled: Boolean, endpoint: String, apiKey: String, model: String) {
+        prefs.setCustomApiEnabled(enabled)
+        prefs.setCustomApiEndpoint(endpoint)
+        prefs.setCustomApiKey(apiKey)
+        prefs.setCustomApiModel(model)
+        _uiState.update {
+            it.copy(
+                isCustomApiEnabled = enabled,
+                customApiEndpoint = endpoint,
+                customApiKey = apiKey,
+                customApiModel = model
+            )
+        }
+        showToast(Strings.apiConfigSaved(_uiState.value.language))
+    }
+
+    fun signInWithGoogleAccount(account: GoogleSignInAccount, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = AuthManager.signInWithGoogleCredential(account)
+            result.onSuccess { user ->
+                val name = user.displayName?.ifBlank { null } ?: account.displayName?.ifBlank { null } ?: "User"
+                val email = user.email?.ifBlank { null } ?: account.email ?: ""
+                prefs.setUserName(name)
+                prefs.setUserEmail(email)
+                prefs.setLoginType("google")
+                prefs.setLoggedIn(true)
+                prefs.setOnboardingCompleted(true)
+                _uiState.update {
+                    it.copy(
+                        userName = name,
+                        userEmail = email,
+                        loginType = "google",
+                        stage = AppStage.CHAT
+                    )
+                }
+                loadCreditsAndSessions()
+                onResult(true, null)
+            }.onFailure { err ->
+                onResult(false, err.localizedMessage ?: "Google Sign-In failed")
+            }
+        }
+    }
+
+    fun signInAnonymously(onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = AuthManager.signInAnonymously()
+            result.onSuccess {
+                prefs.setLoginType("anonymous")
+                prefs.setLoggedIn(true)
+                _uiState.update { it.copy(loginType = "anonymous") }
+                onResult(true, null)
+            }.onFailure { err ->
+                onResult(false, err.localizedMessage ?: "Anonymous sign-in failed")
+            }
+        }
+    }
+
+    fun signInWithEmail(email: String, pass: String, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = AuthManager.signInWithEmail(email, pass)
+            result.onSuccess { user ->
+                val name = user.displayName?.ifBlank { null } ?: email.substringBefore("@")
+                val userEmail = user.email ?: email
+                prefs.setUserName(name)
+                prefs.setUserEmail(userEmail)
+                prefs.setLoginType("email")
+                prefs.setLoggedIn(true)
+                prefs.setOnboardingCompleted(true)
+                _uiState.update {
+                    it.copy(
+                        userName = name,
+                        userEmail = userEmail,
+                        loginType = "email",
+                        stage = AppStage.CHAT
+                    )
+                }
+                loadCreditsAndSessions()
+                onResult(true, null)
+            }.onFailure { err ->
+                onResult(false, err.localizedMessage ?: "Email sign-in failed")
+            }
+        }
+    }
+
+    fun signUpWithEmail(name: String, email: String, pass: String, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            val result = AuthManager.signUpWithEmail(name, email, pass)
+            result.onSuccess { user ->
+                val userName = user.displayName?.ifBlank { null } ?: name.ifBlank { email.substringBefore("@") }
+                val userEmail = user.email ?: email
+                prefs.setUserName(userName)
+                prefs.setUserEmail(userEmail)
+                prefs.setLoginType("email")
+                prefs.setLoggedIn(true)
+                prefs.setOnboardingCompleted(true)
+                _uiState.update {
+                    it.copy(
+                        userName = userName,
+                        userEmail = userEmail,
+                        loginType = "email",
+                        stage = AppStage.CHAT
+                    )
+                }
+                loadCreditsAndSessions()
+                onResult(true, null)
+            }.onFailure { err ->
+                onResult(false, err.localizedMessage ?: "Sign-up failed")
+            }
+        }
+    }
+
+    fun logout(context: Context? = null) {
+        stopGeneration()
+        context?.let { AuthManager.signOut(it) } ?: run {
+            try {
+                AuthManager.auth.signOut()
+            } catch (_: Exception) {}
+        }
+        prefs.logout()
+        _uiState.update {
+            BondhuUiState(
+                stage = AppStage.ONBOARDING,
+                language = prefs.getLanguage(),
+                themeMode = prefs.getTheme(),
+                isDarkMode = prefs.isDarkMode(),
+                deviceId = prefs.getDeviceId(),
+                userName = "",
+                userEmail = "",
+                loginType = "guest",
+                isCustomApiEnabled = prefs.isCustomApiEnabled(),
+                customApiEndpoint = prefs.getCustomApiEndpoint(),
+                customApiKey = prefs.getCustomApiKey(),
+                customApiModel = prefs.getCustomApiModel()
+            )
+        }
+    }
+
+    fun showToast(message: String) {
+        _uiState.update { it.copy(toastMessage = message) }
+        viewModelScope.launch {
+            delay(2400)
+            _uiState.update {
+                if (it.toastMessage == message) it.copy(toastMessage = null) else it
+            }
+        }
+    }
+
     fun stopGeneration() {
         streamJob?.cancel()
         streamJob = null
@@ -226,30 +401,55 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
         wakingUpJob = null
 
         _uiState.update { state ->
-            val updatedMessages = state.messages.map { msg ->
+            val updated = state.messages.map { msg ->
                 if (msg.isStreaming) msg.copy(isStreaming = false) else msg
             }
             state.copy(
                 isStreaming = false,
                 isWakingUp = false,
-                messages = updatedMessages
+                messages = updated
             )
         }
     }
 
-    fun sendMessage(retryPrompt: String? = null) {
+    fun sendMessage(promptText: String, attachment: AttachedFileInfo? = null) {
         if (_uiState.value.isStreaming) return
 
-        val prompt = retryPrompt ?: _uiState.value.inputText.trim()
-        if (prompt.isEmpty()) return
+        val cleanPrompt = promptText.trim()
+        if (cleanPrompt.isEmpty() && attachment == null) return
 
-        val lang = _uiState.value.language
+        val effectiveUserText = if (cleanPrompt.isEmpty() && attachment != null) {
+            if (_uiState.value.language == "bn") "অনুগ্রহ করে এই ফাইলটি বিশ্লেষণ করে ব্যাখ্যা করো।"
+            else "Please analyze this file and explain its contents."
+        } else cleanPrompt
+
+        val fullApiPrompt = if (attachment != null && !attachment.textContent.isNullOrBlank()) {
+            """
+            [File: ${attachment.name}]
+            ${attachment.textContent}
+
+            [Message]: $effectiveUserText
+            """.trimIndent()
+        } else if (attachment != null) {
+            """
+            [Attachment: ${attachment.name} (${attachment.sizeText})]
+
+            [Message]: $effectiveUserText
+            """.trimIndent()
+        } else {
+            effectiveUserText
+        }
+
         val deviceId = _uiState.value.deviceId
         val sessionId = _uiState.value.currentSessionId
 
-        // Add user message
-        val userMsg = ChatMessage(role = "user", content = prompt)
-        val assistantMsg = ChatMessage(
+        val userMessage = ChatMessage(
+            role = "user",
+            content = effectiveUserText,
+            attachmentName = attachment?.name,
+            attachmentType = if (attachment?.isImage == true) "image" else "file"
+        )
+        val assistantMessage = ChatMessage(
             role = "assistant",
             content = "",
             isStreaming = true
@@ -257,27 +457,40 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
 
         _uiState.update { state ->
             state.copy(
-                inputText = if (retryPrompt == null) "" else state.inputText,
-                messages = state.messages + userMsg + assistantMsg,
+                inputText = "",
+                messages = state.messages + userMessage + assistantMessage,
                 isStreaming = true,
                 isWakingUp = false
             )
         }
 
-        // Launch patient wake up timer: if backend takes > 3.5s before sending first event, show "waking up"
+        // Patient wake-up timer: show cold-start message if server takes >3.0s
         wakingUpJob?.cancel()
         wakingUpJob = viewModelScope.launch {
-            delay(3500)
+            delay(3000)
             _uiState.update { it.copy(isWakingUp = true) }
         }
 
         streamJob?.cancel()
+        val isCustomApi = _uiState.value.isCustomApiEnabled && _uiState.value.customApiKey.isNotBlank()
+        val streamFlow = if (isCustomApi) {
+            api.sendCustomApiMessageStream(
+                endpoint = _uiState.value.customApiEndpoint,
+                apiKey = _uiState.value.customApiKey,
+                model = _uiState.value.customApiModel,
+                message = fullApiPrompt,
+                history = _uiState.value.messages.dropLast(2)
+            )
+        } else {
+            api.sendMessageStream(deviceId, fullApiPrompt, sessionId)
+        }
+
         streamJob = viewModelScope.launch {
-            var receivedAnyDelta = false
             var currentContent = ""
+            var receivedDelta = false
 
             try {
-                api.sendMessageStream(deviceId, prompt, sessionId).collect { event ->
+                streamFlow.collect { event ->
                     when (event) {
                         is StreamEvent.Meta -> {
                             wakingUpJob?.cancel()
@@ -292,7 +505,7 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
 
                         is StreamEvent.Delta -> {
                             wakingUpJob?.cancel()
-                            receivedAnyDelta = true
+                            receivedDelta = true
                             currentContent += event.text
                             _uiState.update { state ->
                                 val lastIndex = state.messages.indexOfLast { it.isStreaming }
@@ -326,144 +539,100 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
 
                         is StreamEvent.Done -> {
                             wakingUpJob?.cancel()
-                            val finalContent = if (!event.reply.isNullOrEmpty()) event.reply else currentContent
+                            val finalReply = event.reply ?: currentContent
                             _uiState.update { state ->
                                 val lastIndex = state.messages.indexOfLast { it.isStreaming }
                                 val targetIndex = if (lastIndex != -1) lastIndex else state.messages.indexOfLast { it.role == "assistant" }
-                                val updated = state.messages.toMutableList()
                                 if (targetIndex != -1) {
+                                    val updated = state.messages.toMutableList()
                                     updated[targetIndex] = updated[targetIndex].copy(
-                                        content = finalContent,
+                                        content = finalReply,
                                         isStreaming = false,
-                                        isError = false,
-                                        errorMessage = null
+                                        isError = false
+                                    )
+                                    state.copy(
+                                        messages = updated,
+                                        isStreaming = false,
+                                        isWakingUp = false,
+                                        currentSessionId = event.sessionId ?: state.currentSessionId,
+                                        credits = event.remainingCredits ?: state.credits
                                     )
                                 } else {
-                                    updated.add(
-                                        ChatMessage(
-                                            role = "assistant",
-                                            content = finalContent,
-                                            isStreaming = false
-                                        )
-                                    )
+                                    state.copy(isStreaming = false, isWakingUp = false)
                                 }
-                                val newSessionId = event.sessionId ?: state.currentSessionId
-                                val newCredits = event.remainingCredits ?: state.credits
-                                state.copy(
-                                    messages = updated,
-                                    isStreaming = false,
-                                    isWakingUp = false,
-                                    currentSessionId = newSessionId,
-                                    credits = newCredits
-                                )
                             }
-                            refreshSessions()
+                            if (!isCustomApi) {
+                                refreshSessions()
+                            }
                         }
 
                         is StreamEvent.Error -> {
                             wakingUpJob?.cancel()
-                            val errStr = event.error
-                            val localizedError = when (errStr) {
-                                "HTTP_400" -> Strings.error400(lang)
-                                "HTTP_402" -> Strings.error402(lang)
-                                "HTTP_403" -> Strings.error403(lang)
-                                "HTTP_429" -> Strings.error429(lang)
-                                "HTTP_503" -> Strings.error503(lang)
-                                "STREAM_DROPPED" -> Strings.errorGeneral(lang)
-                                else -> errStr
-                            }
-
+                            val rawErr = event.error
+                            val friendlyError = if (isCustomApi) rawErr else Strings.formatHttpError(rawErr, _uiState.value.language)
                             _uiState.update { state ->
                                 val lastIndex = state.messages.indexOfLast { it.isStreaming }
                                 val targetIndex = if (lastIndex != -1) lastIndex else state.messages.indexOfLast { it.role == "assistant" }
-                                val updated = state.messages.toMutableList()
                                 if (targetIndex != -1) {
-                                    if (receivedAnyDelta) {
-                                        // Keep all received text intact
-                                        updated[targetIndex] = updated[targetIndex].copy(
-                                            content = currentContent,
-                                            isStreaming = false,
-                                            isError = false
-                                        )
-                                    } else {
-                                        // Full error bubble only if no text was received
-                                        updated[targetIndex] = updated[targetIndex].copy(
-                                            content = localizedError,
-                                            isStreaming = false,
-                                            isError = true,
-                                            canRetry = true,
-                                            retryPrompt = prompt
-                                        )
-                                    }
+                                    val updated = state.messages.toMutableList()
+                                    // If we had received delta, keep partial content
+                                    val hadContent = currentContent.isNotBlank()
+                                    updated[targetIndex] = updated[targetIndex].copy(
+                                        content = if (hadContent) currentContent else friendlyError,
+                                        isStreaming = false,
+                                        isError = !hadContent,
+                                        errorMessage = if (!hadContent) friendlyError else null,
+                                        canRetry = true,
+                                        retryPrompt = cleanPrompt
+                                    )
+                                    state.copy(
+                                        messages = updated,
+                                        isStreaming = false,
+                                        isWakingUp = false
+                                    )
+                                } else {
+                                    state.copy(isStreaming = false, isWakingUp = false)
                                 }
-                                state.copy(
-                                    messages = updated,
-                                    isStreaming = false,
-                                    isWakingUp = false
-                                )
                             }
                         }
                     }
                 }
             } catch (e: Exception) {
                 wakingUpJob?.cancel()
+                val friendlyError = Strings.formatHttpError(e.message.orEmpty(), _uiState.value.language)
                 _uiState.update { state ->
                     val lastIndex = state.messages.indexOfLast { it.isStreaming }
                     val targetIndex = if (lastIndex != -1) lastIndex else state.messages.indexOfLast { it.role == "assistant" }
-                    val updated = state.messages.toMutableList()
                     if (targetIndex != -1) {
-                        if (receivedAnyDelta) {
-                            updated[targetIndex] = updated[targetIndex].copy(
-                                content = currentContent,
-                                isStreaming = false,
-                                isError = false
-                            )
-                        } else {
-                            updated[targetIndex] = updated[targetIndex].copy(
-                                isStreaming = false,
-                                isError = true,
-                                errorMessage = Strings.errorGeneral(lang),
-                                canRetry = true,
-                                retryPrompt = prompt
-                            )
-                        }
-                    }
-                    state.copy(
-                        messages = updated,
-                        isStreaming = false,
-                        isWakingUp = false
-                    )
-                }
-            } finally {
-                wakingUpJob?.cancel()
-                _uiState.update { state ->
-                    val lastStreaming = state.messages.indexOfLast { it.isStreaming }
-                    if (lastStreaming != -1) {
                         val updated = state.messages.toMutableList()
-                        val msg = updated[lastStreaming]
-                        updated[lastStreaming] = msg.copy(
-                            content = if (msg.content.isNotEmpty()) msg.content else currentContent,
-                            isStreaming = false
+                        val hadContent = currentContent.isNotBlank()
+                        updated[targetIndex] = updated[targetIndex].copy(
+                            content = if (hadContent) currentContent else friendlyError,
+                            isStreaming = false,
+                            isError = !hadContent,
+                            errorMessage = if (!hadContent) friendlyError else null,
+                            canRetry = true,
+                            retryPrompt = cleanPrompt
                         )
-                        state.copy(messages = updated, isStreaming = false, isWakingUp = false)
+                        state.copy(
+                            messages = updated,
+                            isStreaming = false,
+                            isWakingUp = false
+                        )
                     } else {
                         state.copy(isStreaming = false, isWakingUp = false)
                     }
                 }
+            } finally {
+                _uiState.update { state ->
+                    if (state.isStreaming) {
+                        val updated = state.messages.map {
+                            if (it.isStreaming) it.copy(isStreaming = false) else it
+                        }
+                        state.copy(isStreaming = false, isWakingUp = false, messages = updated)
+                    } else state
+                }
             }
-        }
-    }
-
-    fun selectModel(model: String) {
-        _uiState.update {
-            it.copy(selectedModel = model)
-        }
-        showToast("Model switched to $model")
-    }
-
-    fun openCookingSoon(open: Boolean) {
-        _uiState.update {
-            it.copy(isCookingSoonDialogOpen = open)
         }
     }
 }

@@ -11,7 +11,9 @@ data class ChatMessage(
     val isError: Boolean = false,
     val errorMessage: String? = null,
     val canRetry: Boolean = false,
-    val retryPrompt: String? = null
+    val retryPrompt: String? = null,
+    val attachmentName: String? = null,
+    val attachmentType: String? = null
 )
 
 data class ChatSession(
@@ -38,8 +40,8 @@ sealed class StreamEvent {
 
     data class Done(
         val reply: String?,
-        val sessionId: String?,
-        val remainingCredits: Int?,
+        val sessionId: String? = null,
+        val remainingCredits: Int? = null,
         val persisted: Boolean? = null
     ) : StreamEvent()
 
