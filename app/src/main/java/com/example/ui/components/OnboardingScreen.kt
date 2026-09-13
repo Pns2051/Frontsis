@@ -567,6 +567,7 @@ fun OnboardingScreen(
                                         .border(1.dp, colors.error.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
                                         .padding(12.dp)
                                 ) {
+                                    val runtimeSha1 = remember(context) { com.example.data.auth.AuthManager.getRuntimeSha1(context) }
                                     Column {
                                         Text(
                                             text = authErrorMessage ?: "",
@@ -575,12 +576,19 @@ fun OnboardingScreen(
                                             color = colors.error,
                                             fontWeight = FontWeight.Medium
                                         )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "App SHA-1: $runtimeSha1",
+                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                            fontSize = 10.sp,
+                                            color = colors.textSecondary
+                                        )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
-                                            // Button to copy SHA-1
+                                            // Button to copy runtime SHA-1
                                             Box(
                                                 modifier = Modifier
                                                     .clip(RoundedCornerShape(6.dp))
@@ -588,8 +596,8 @@ fun OnboardingScreen(
                                                     .border(1.dp, colors.border, RoundedCornerShape(6.dp))
                                                     .clickable {
                                                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                                        clipboard.setPrimaryClip(ClipData.newPlainText("SHA-1", AuthManager.SHA1_FINGERPRINT))
-                                                        Toast.makeText(context, "SHA-1 copied to clipboard! Add to Firebase Console", Toast.LENGTH_SHORT).show()
+                                                        clipboard.setPrimaryClip(ClipData.newPlainText("SHA-1", runtimeSha1))
+                                                        Toast.makeText(context, "SHA-1 copied: $runtimeSha1", Toast.LENGTH_SHORT).show()
                                                     }
                                                     .padding(horizontal = 8.dp, vertical = 6.dp)
                                             ) {
