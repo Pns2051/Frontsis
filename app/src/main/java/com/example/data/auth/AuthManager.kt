@@ -22,11 +22,15 @@ import kotlinx.coroutines.tasks.await
 object AuthManager {
     const val WEB_CLIENT_ID = "362682080745-o3jl218s1elvsfqmgqsmjnqq4s9ggenb.apps.googleusercontent.com"
 
-    val auth: FirebaseAuth
-        get() = FirebaseAuth.getInstance()
+    val auth: FirebaseAuth?
+        get() = try {
+            FirebaseAuth.getInstance()
+        } catch (e: Exception) {
+            null
+        }
 
     val currentUser: FirebaseUser?
-        get() = auth.currentUser
+        get() = auth?.currentUser
 
     fun getGoogleSignInClient(context: Context): GoogleSignInClient {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -37,10 +41,11 @@ object AuthManager {
     }
 
     suspend fun signInWithGoogleCredential(account: GoogleSignInAccount): Result<FirebaseUser> {
+        val firebaseAuth = auth ?: return Result.failure(Exception("Firebase is not initialized"))
         return try {
             val idToken = account.idToken ?: return Result.failure(Exception("Missing Google ID Token"))
             val credential = GoogleAuthProvider.getCredential(idToken, null)
-            val authResult = auth.signInWithCredential(credential).await()
+            val authResult = firebaseAuth.signInWithCredential(credential).await()
             val user = authResult.user ?: return Result.failure(Exception("Firebase user is null"))
             Result.success(user)
         } catch (e: Exception) {
@@ -49,8 +54,9 @@ object AuthManager {
     }
 
     suspend fun signInAnonymously(): Result<FirebaseUser> {
+        val firebaseAuth = auth ?: return Result.failure(Exception("Firebase is not initialized"))
         return try {
-            val authResult = auth.signInAnonymously().await()
+            val authResult = firebaseAuth.signInAnonymously().await()
             val user = authResult.user ?: return Result.failure(Exception("Firebase user is null"))
             Result.success(user)
         } catch (e: Exception) {
@@ -59,8 +65,9 @@ object AuthManager {
     }
 
     suspend fun signInWithEmail(email: String, pass: String): Result<FirebaseUser> {
+        val firebaseAuth = auth ?: return Result.failure(Exception("Firebase is not initialized"))
         return try {
-            val authResult = auth.signInWithEmailAndPassword(email.trim(), pass).await()
+            val authResult = firebaseAuth.signInWithEmailAndPassword(email.trim(), pass).await()
             val user = authResult.user ?: return Result.failure(Exception("User not found"))
             Result.success(user)
         } catch (e: Exception) {
@@ -69,8 +76,9 @@ object AuthManager {
     }
 
     suspend fun signUpWithEmail(name: String, email: String, pass: String): Result<FirebaseUser> {
+        val firebaseAuth = auth ?: return Result.failure(Exception("Firebase is not initialized"))
         return try {
-            val authResult = auth.createUserWithEmailAndPassword(email.trim(), pass).await()
+            val authResult = firebaseAuth.createUserWithEmailAndPassword(email.trim(), pass).await()
             val user = authResult.user ?: return Result.failure(Exception("Registration failed"))
             if (name.isNotBlank()) {
                 val updateReq = UserProfileChangeRequest.Builder()
@@ -86,7 +94,7 @@ object AuthManager {
 
     fun signOut(context: Context) {
         try {
-            auth.signOut()
+            auth?.signOut()
             getGoogleSignInClient(context).signOut()
         } catch (_: Exception) {}
     }

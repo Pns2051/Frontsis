@@ -1,7 +1,11 @@
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
-  alias(libs.plugins.google.services)
+}
+
+// Safely apply Google Services plugin only when google-services.json is present
+if (file("google-services.json").exists() || file("src/debug/google-services.json").exists() || file("src/google-services.json").exists()) {
+  apply(plugin = "com.google.gms.google-services")
 }
 
 android {

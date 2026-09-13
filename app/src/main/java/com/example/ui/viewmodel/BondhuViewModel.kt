@@ -362,7 +362,7 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
         stopGeneration()
         context?.let { AuthManager.signOut(it) } ?: run {
             try {
-                AuthManager.auth.signOut()
+                AuthManager.auth?.signOut()
             } catch (_: Exception) {}
         }
         prefs.logout()

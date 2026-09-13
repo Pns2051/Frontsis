@@ -39,6 +39,12 @@ jobs:
             base64 -d debug.keystore.base64 > debug.keystore 2>/dev/null || true
           fi
 
+      - name: Setup Google Services Configuration
+        run: |
+          if [ -n "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
+            echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > app/google-services.json
+          fi
+
       - name: Make Gradle Wrapper Executable
         run: chmod +x gradlew
 
