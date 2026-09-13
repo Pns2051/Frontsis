@@ -27,6 +27,7 @@ class BondhuPreferences(context: Context) {
         private const val KEY_CUSTOM_API_ENDPOINT = "bondhu_custom_api_endpoint"
         private const val KEY_CUSTOM_API_KEY = "bondhu_custom_api_key"
         private const val KEY_CUSTOM_API_MODEL = "bondhu_custom_api_model"
+        private const val KEY_CACHED_CREDITS = "bondhu_cached_credits"
     }
 
     // Custom AI API settings
@@ -60,6 +61,15 @@ class BondhuPreferences(context: Context) {
 
     fun setCustomApiModel(model: String) {
         prefs.edit().putString(KEY_CUSTOM_API_MODEL, model.trim()).apply()
+    }
+
+    // Cached Credits
+    fun getCachedCredits(): Int {
+        return prefs.getInt(KEY_CACHED_CREDITS, 50)
+    }
+
+    fun setCachedCredits(credits: Int) {
+        prefs.edit().putInt(KEY_CACHED_CREDITS, credits).apply()
     }
 
     // Device ID - generated ONCE ('web-' + random UUID) at guest onboarding, persisted forever

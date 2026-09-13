@@ -13,6 +13,7 @@ import com.example.data.remote.BondhuApiService
 import com.example.ui.components.AttachedFileInfo
 import com.example.ui.i18n.Strings
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 enum class AppStage {
     SPLASH,
@@ -72,6 +74,7 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
             userName = prefs.getUserName(),
             userEmail = prefs.getUserEmail(),
             loginType = prefs.getLoginType(),
+            credits = prefs.getCachedCredits(),
             isCustomApiEnabled = prefs.isCustomApiEnabled(),
             customApiEndpoint = prefs.getCustomApiEndpoint(),
             customApiKey = prefs.getCustomApiKey(),
@@ -114,21 +117,32 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
 
     fun loadCreditsAndSessions() {
         val deviceId = _uiState.value.deviceId
-        viewModelScope.launch {
-            try {
-                val credits = api.getCredits(deviceId)
-                _uiState.update {
-                    it.copy(
-                        credits = credits.remainingCredits,
-                        isBanned = credits.banned
-                    )
-                }
-            } catch (_: Exception) {}
+        viewModelScope.launch(Dispatchers.IO) {
+            // Concurrent credits fetch with 8s safety timeout (doesn't block UI or sessions)
+            launch {
+                try {
+                    withTimeoutOrNull(8000L) {
+                        val credits = api.getCredits(deviceId)
+                        prefs.setCachedCredits(credits.remainingCredits)
+                        _uiState.update {
+                            it.copy(
+                                credits = credits.remainingCredits,
+                                isBanned = credits.banned
+                            )
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
 
-            try {
-                val sessions = api.getSessions(deviceId)
-                _uiState.update { it.copy(sessions = sessions) }
-            } catch (_: Exception) {}
+            // Concurrent sessions history fetch with 8s safety timeout
+            launch {
+                try {
+                    withTimeoutOrNull(8000L) {
+                        val sessions = api.getSessions(deviceId)
+                        _uiState.update { it.copy(sessions = sessions) }
+                    }
+                } catch (_: Exception) {}
+            }
         }
     }
 
