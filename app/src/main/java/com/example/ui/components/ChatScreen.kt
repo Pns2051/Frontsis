@@ -2,9 +2,12 @@ package com.example.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.example.ui.theme.BondhuTheme
 import com.example.ui.viewmodel.BondhuUiState
 import com.example.ui.viewmodel.BondhuViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -42,7 +46,7 @@ import kotlinx.coroutines.launch
  * - Composer: Pill #1C1C1C 24dp radius, [📎 attach] [input] [⚡ model] [➤ send / ■ stop]
  * - Model Bottom Sheet & Settings Dialog
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ChatScreen(
     viewModel: BondhuViewModel,
@@ -74,6 +78,15 @@ fun ChatScreen(
 
     LaunchedEffect(uiState.messages.size, uiState.messages.lastOrNull()?.content) {
         if (isNearBottom && uiState.messages.isNotEmpty()) {
+            listState.animateScrollToItem(uiState.messages.size - 1)
+        }
+    }
+
+    // Auto-scroll to latest message when keyboard pops up so the writing/reading area is never covered
+    val isImeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(isImeVisible) {
+        if (isImeVisible && uiState.messages.isNotEmpty()) {
+            delay(150)
             listState.animateScrollToItem(uiState.messages.size - 1)
         }
     }
@@ -133,6 +146,7 @@ fun ChatScreen(
         }
     ) {
         Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             containerColor = colors.background,
             topBar = {
                 TopBar(
@@ -149,6 +163,8 @@ fun ChatScreen(
                     isStreaming = uiState.isStreaming,
                     currentModel = uiState.selectedModel,
                     language = uiState.language,
+                    isWebSearchEnabled = uiState.isWebSearchEnabled,
+                    onToggleWebSearch = { viewModel.toggleWebSearch() },
                     onSend = { message, attachment ->
                         viewModel.sendMessage(message, attachment)
                     },

@@ -358,27 +358,38 @@ fun ChatMessageItem(
                             if (!message.isStreaming && displayContent.isNotBlank()) {
                                 Row(
                                     modifier = Modifier
-                                        .padding(top = 8.dp)
-                                        .clickable {
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                            clipboard.setPrimaryClip(ClipData.newPlainText("Bondhu AI", displayContent))
-                                            Toast.makeText(context, Strings.copied(language), Toast.LENGTH_SHORT).show()
-                                        },
+                                        .padding(top = 10.dp, bottom = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.ContentCopy,
-                                        contentDescription = Strings.copy(language),
-                                        tint = colors.textSecondary,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = Strings.copy(language),
-                                        fontFamily = HindSiliguriFamily,
-                                        fontSize = 12.sp,
-                                        color = colors.textSecondary
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(colors.surfaceElevated)
+                                            .border(1.dp, colors.border, RoundedCornerShape(8.dp))
+                                            .clickable {
+                                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                clipboard.setPrimaryClip(ClipData.newPlainText("Bondhu AI", displayContent))
+                                                Toast.makeText(context, Strings.copied(language), Toast.LENGTH_SHORT).show()
+                                            }
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.ContentCopy,
+                                                contentDescription = Strings.copy(language),
+                                                tint = colors.textSecondary,
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = Strings.copy(language),
+                                                fontFamily = HindSiliguriFamily,
+                                                fontSize = 11.5.sp,
+                                                color = colors.textSecondary
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }

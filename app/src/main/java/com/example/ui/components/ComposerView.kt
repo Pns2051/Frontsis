@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -91,6 +92,8 @@ fun ComposerView(
     isStreaming: Boolean,
     currentModel: String,
     language: String,
+    isWebSearchEnabled: Boolean = false,
+    onToggleWebSearch: () -> Unit = {},
     onSend: (message: String, attachment: AttachedFileInfo?) -> Unit,
     onStop: () -> Unit,
     onOpenModelSelector: () -> Unit,
@@ -125,9 +128,9 @@ fun ComposerView(
                 width = 1.dp,
                 color = colors.border.copy(alpha = 0.6f)
             )
-            .padding(horizontal = 14.dp, vertical = 10.dp)
             .navigationBarsPadding()
             .imePadding()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         // File bar (above composer)
         AnimatedVisibility(
@@ -248,13 +251,38 @@ fun ComposerView(
                     )
                 }
 
+                // [🌐 Web Search toggle]
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(if (isWebSearchEnabled) colors.primary.copy(alpha = 0.2f) else colors.surfaceElevated)
+                        .border(
+                            width = 1.dp,
+                            color = if (isWebSearchEnabled) colors.primary else colors.border,
+                            shape = CircleShape
+                        )
+                        .clickable(onClick = onToggleWebSearch)
+                        .testTag("web_search_toggle"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.TravelExplore,
+                        contentDescription = "Web Search",
+                        tint = if (isWebSearchEnabled) colors.primary else colors.textSecondary,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
+
                 // [⚡ model label] 12sp, tappable to open model sheet
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(colors.surfaceElevated)
                         .clickable(onClick = onOpenModelSelector)
-                        .padding(horizontal = 8.dp, vertical = 5.dp)
+                        .padding(horizontal = 7.dp, vertical = 5.dp)
                         .testTag("model_selector_badge"),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -264,7 +292,7 @@ fun ComposerView(
                         tint = colors.primary,
                         modifier = Modifier.size(13.dp)
                     )
-                    Spacer(modifier = Modifier.width(3.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
                     Text(
                         text = if (currentModel == "reasoning") "5.3" else "Light",
                         fontFamily = BalooDa2Family,

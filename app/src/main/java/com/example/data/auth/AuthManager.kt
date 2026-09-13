@@ -21,6 +21,8 @@ import kotlinx.coroutines.tasks.await
  */
 object AuthManager {
     const val WEB_CLIENT_ID = "362682080745-o3jl218s1elvsfqmgqsmjnqq4s9ggenb.apps.googleusercontent.com"
+    const val SHA1_FINGERPRINT = "D5:46:35:23:2E:16:A3:06:A1:B0:F7:F3:31:B4:4D:75:C3:58:9E:2B"
+    const val SHA256_FINGERPRINT = "05:5F:B7:AF:F0:4E:53:DD:79:A4:FE:95:AA:08:92:5E:0B:CE:80:6D:A1:5C:BB:FF:51:59:0B:A3:13:D5:58:E8"
 
     val auth: FirebaseAuth?
         get() = try {
@@ -32,9 +34,23 @@ object AuthManager {
     val currentUser: FirebaseUser?
         get() = auth?.currentUser
 
+    fun getWebClientId(context: Context): String {
+        val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+        return if (resId != 0) {
+            try {
+                context.getString(resId)
+            } catch (_: Exception) {
+                WEB_CLIENT_ID
+            }
+        } else {
+            WEB_CLIENT_ID
+        }
+    }
+
     fun getGoogleSignInClient(context: Context): GoogleSignInClient {
+        val clientId = getWebClientId(context)
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(WEB_CLIENT_ID)
+            .requestIdToken(clientId)
             .requestEmail()
             .build()
         return GoogleSignIn.getClient(context, gso)

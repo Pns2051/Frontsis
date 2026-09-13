@@ -1,5 +1,8 @@
 package com.example.ui.components
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -33,9 +36,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -154,10 +159,10 @@ fun OnboardingScreen(
         } catch (e: ApiException) {
             val msg = when (e.statusCode) {
                 12501 -> "Sign-in cancelled"
-                12500 -> "Google Play services error (12500)"
-                10 -> "Developer configuration error: check SHA-1 in Firebase"
-                7 -> "Network error. Please check your internet connection"
-                else -> "Sign-in error: code ${e.statusCode}"
+                12500 -> "Google Play services error (12500): Check SHA-1 in Firebase Console"
+                10 -> "Configuration error (Code 10): App SHA-1 is not registered in Firebase Console"
+                7 -> "Network error: Please check your internet connection"
+                else -> "Google sign-in error (code ${e.statusCode})"
             }
             authErrorMessage = msg
             Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
@@ -190,8 +195,10 @@ fun OnboardingScreen(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(horizontal = 24.dp)
-            .padding(top = 48.dp, bottom = 24.dp)
+            .padding(top = 16.dp, bottom = 20.dp)
             .testTag("onboarding_screen")
     ) {
         AnimatedContent(
@@ -499,11 +506,24 @@ fun OnboardingScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (isAuthLoading && !showEmailAuth) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(22.dp),
-                                        color = colors.primary,
-                                        strokeWidth = 2.dp
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            color = colors.primary,
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text(
+                                            text = if (selectedLanguage == "bn") "লগইন হচ্ছে..." else "Signing in...",
+                                            fontFamily = BalooDa2Family,
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 14.sp,
+                                            color = colors.textSecondary
+                                        )
+                                    }
                                 } else {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
@@ -537,6 +557,75 @@ fun OnboardingScreen(
                             }
 
                             Spacer(modifier = Modifier.height(12.dp))
+
+                            if (authErrorMessage != null && !showEmailAuth) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(colors.error.copy(alpha = 0.12f))
+                                        .border(1.dp, colors.error.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                        .padding(12.dp)
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = authErrorMessage ?: "",
+                                            fontFamily = HindSiliguriFamily,
+                                            fontSize = 12.5.sp,
+                                            color = colors.error,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            // Button to copy SHA-1
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(colors.surfaceElevated)
+                                                    .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                                                    .clickable {
+                                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                        clipboard.setPrimaryClip(ClipData.newPlainText("SHA-1", AuthManager.SHA1_FINGERPRINT))
+                                                        Toast.makeText(context, "SHA-1 copied to clipboard! Add to Firebase Console", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                                            ) {
+                                                Text(
+                                                    text = "📋 Copy SHA-1",
+                                                    fontFamily = HindSiliguriFamily,
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = colors.textPrimary
+                                                )
+                                            }
+
+                                            // Quick bypass button: "Skip to Chat"
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(SolidButtonGreen)
+                                                    .clickable {
+                                                        onAnonymousSignIn { _, _ -> }
+                                                        step = 4
+                                                    }
+                                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                                            ) {
+                                                Text(
+                                                    text = "🚀 Skip to Chat",
+                                                    fontFamily = HindSiliguriFamily,
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = Color.White
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
 
                             // Email Button / Expandable form
                             if (!showEmailAuth) {

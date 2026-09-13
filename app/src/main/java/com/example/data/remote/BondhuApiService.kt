@@ -40,13 +40,21 @@ class BondhuApiService {
     fun sendMessageStream(
         deviceId: String,
         message: String,
-        sessionId: String?
+        sessionId: String?,
+        model: String = "light",
+        webSearch: Boolean = false
     ): Flow<StreamEvent> = callbackFlow {
         val jsonBody = JSONObject().apply {
             put("device_id", deviceId)
             put("message", message)
             if (!sessionId.isNullOrBlank()) {
                 put("session_id", sessionId)
+            }
+            if (model == "reasoning") {
+                put("model", "reasoning")
+            }
+            if (webSearch) {
+                put("web_search", true)
             }
         }
 
