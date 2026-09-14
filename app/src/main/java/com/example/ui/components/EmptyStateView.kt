@@ -42,9 +42,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.i18n.Strings
-import com.example.ui.theme.BalooDa2Family
 import com.example.ui.theme.BondhuTheme
-import com.example.ui.theme.HindSiliguriFamily
+import com.example.ui.theme.NotoSansBengaliFamily
 
 private data class RecommendationItem(
     val id: String,
@@ -139,7 +138,7 @@ fun EmptyStateView(
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = if (language == "bn") "বন্ধু এআই প্রস্তুত" else "Bondhu AI Ready",
-                    fontFamily = BalooDa2Family,
+                    fontFamily = NotoSansBengaliFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     color = colors.primary
@@ -152,12 +151,12 @@ fun EmptyStateView(
         // Large personalized Welcome Title: "Welcome, [Name]!" / "স্বাগতম, [Name]!"
         Text(
             text = if (language == "bn") "স্বাগতম, $displayName!" else "Welcome, $displayName!",
-            fontFamily = BalooDa2Family,
+            fontFamily = NotoSansBengaliFamily,
             fontWeight = FontWeight.Bold,
-            fontSize = 30.sp,
+            fontSize = 28.sp,
             color = colors.textPrimary,
             textAlign = TextAlign.Center,
-            lineHeight = 36.sp
+            lineHeight = 38.sp
         )
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -165,11 +164,11 @@ fun EmptyStateView(
         // Futuristic friendly tagline
         Text(
             text = if (language == "bn") "আমি বন্ধু — আপনার এআই সঙ্গী। কী জানতে চান?" else "I'm Bondhu — your AI companion. How can I help you?",
-            fontFamily = HindSiliguriFamily,
-            fontSize = 14.sp,
+            fontFamily = NotoSansBengaliFamily,
+            fontSize = 14.5.sp,
             color = colors.textSecondary,
             textAlign = TextAlign.Center,
-            lineHeight = 20.sp
+            lineHeight = 22.sp
         )
 
         Spacer(modifier = Modifier.height(28.dp))
@@ -248,7 +247,7 @@ private fun RecommendationPill(
             Spacer(modifier = Modifier.width(7.dp))
             Text(
                 text = chip.title,
-                fontFamily = HindSiliguriFamily,
+                fontFamily = NotoSansBengaliFamily,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = colors.textPrimary,

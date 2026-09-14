@@ -96,10 +96,10 @@ fun TopBar(
                 )
             }
 
-            // Center: "বন্ধু" (only the 'bo' as requested)
+            // Center: "বন্ধু · AI" - Prominent, crisp, unclipped wordmark
             BondhuLogo(
-                size = LogoSize.MEDIUM,
-                showAi = false
+                size = LogoSize.LARGE,
+                showAi = true
             )
 
             // Right Items: [⚡ 42] and [＋]

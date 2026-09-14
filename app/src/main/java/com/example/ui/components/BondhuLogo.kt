@@ -17,20 +17,21 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.BalooDa2Family
+import androidx.compose.ui.text.style.TextAlign
 import com.example.ui.theme.BondhuTheme
+import com.example.ui.theme.NotoSansBengaliFamily
 
 enum class LogoSize(
     val fontSize: TextUnit,
     val dotSize: Dp,
     val spacing: Dp
 ) {
-    MINI(12.sp, 3.dp, 2.dp),
+    MINI(13.sp, 3.dp, 2.dp),
     SMALL(16.sp, 4.dp, 3.dp),
-    MEDIUM(18.sp, 5.dp, 3.5.dp),
-    LARGE(24.sp, 6.dp, 4.dp),
-    HERO(28.sp, 7.5.dp, 5.dp),
-    SPLASH(44.sp, 10.dp, 7.dp)
+    MEDIUM(21.sp, 5.dp, 4.dp),
+    LARGE(25.sp, 6.dp, 4.5.dp),
+    HERO(30.sp, 7.5.dp, 5.dp),
+    SPLASH(46.sp, 10.dp, 7.dp)
 }
 
 // Exact brand colors from official brand mark
@@ -39,10 +40,8 @@ val BrandTerracottaDot = Color(0xFFC45A38)
 
 /**
  * Official Wordmark "বন্ধু":
- * Matches the official design asset:
- * "বন্ধু" in deep forest green #1E4D38 (or dynamic emerald on dark),
- * with optional terracotta dot #C45A38 and matching "AI".
- * By default renders only "বন্ধু" ("the bo") as explicitly requested.
+ * Uses Google's authentic Noto Sans Bengali font for crisp, unclipped Bengali ligatures
+ * with full ascender (matra) and descender (u-kar) breathing room.
  */
 @Composable
 fun BondhuLogo(
@@ -62,14 +61,15 @@ fun BondhuLogo(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        // "বন্ধু"
+        // "বন্ধু" - Sturdy, unclipped, robust Bengali typography
         Text(
             text = "বন্ধু",
-            fontFamily = BalooDa2Family,
+            fontFamily = NotoSansBengaliFamily,
             fontWeight = FontWeight.Bold,
             fontSize = size.fontSize,
             color = effectiveTextColor,
-            lineHeight = size.fontSize
+            lineHeight = (size.fontSize.value * 1.35f).sp,
+            textAlign = TextAlign.Center
         )
 
         if (showAi) {
@@ -90,11 +90,11 @@ fun BondhuLogo(
             // "AI" in matching brand green
             Text(
                 text = "AI",
-                fontFamily = BalooDa2Family,
+                fontFamily = NotoSansBengaliFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = size.fontSize,
                 color = effectiveAiColor,
-                lineHeight = size.fontSize
+                lineHeight = (size.fontSize.value * 1.35f).sp
             )
         }
     }

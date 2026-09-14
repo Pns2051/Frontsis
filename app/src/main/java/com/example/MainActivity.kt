@@ -64,13 +64,13 @@ fun BondhuApp(
                                 }
                             },
                             onEmailSignIn = { email, pass, onResult ->
-                                viewModel.signInWithEmail(email, pass, onResult)
+                                viewModel.signInWithEmail(email = email, pass = pass, onResult = onResult)
                             },
                             onEmailSignUp = { name, email, pass, onResult ->
-                                viewModel.signUpWithEmail(name, email, pass, onResult)
+                                viewModel.signUpWithEmail(name = name, email = email, pass = pass, onResult = onResult)
                             },
                             onAnonymousSignIn = { onResult ->
-                                viewModel.signInAnonymously(onResult)
+                                viewModel.signInAnonymously(onResult = onResult)
                             }
                         )
                     }

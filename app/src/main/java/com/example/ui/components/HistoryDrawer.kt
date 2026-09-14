@@ -54,9 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.ChatSession
 import com.example.ui.i18n.Strings
-import com.example.ui.theme.BalooDa2Family
 import com.example.ui.theme.BondhuTheme
-import com.example.ui.theme.HindSiliguriFamily
+import com.example.ui.theme.NotoSansBengaliFamily
 
 /**
  * ═══════════ SCREEN 7: HISTORY DRAWER ═══════════
@@ -125,7 +124,7 @@ fun HistoryDrawerContent(
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = Strings.newChat(language),
-                fontFamily = BalooDa2Family,
+                fontFamily = NotoSansBengaliFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp
             )
@@ -136,7 +135,7 @@ fun HistoryDrawerContent(
         // Topic Sections in Sidebar (Relocated as requested to declutter center)
         Text(
             text = if (language == "bn") "বিষয় ও প্রম্পট" else "Topics & Prompts",
-            fontFamily = HindSiliguriFamily,
+            fontFamily = NotoSansBengaliFamily,
             fontWeight = FontWeight.SemiBold,
             fontSize = 12.sp,
             color = colors.textSecondary
@@ -175,7 +174,7 @@ fun HistoryDrawerContent(
         // Label: "History"
         Text(
             text = Strings.history(language),
-            fontFamily = HindSiliguriFamily,
+            fontFamily = NotoSansBengaliFamily,
             fontWeight = FontWeight.SemiBold,
             fontSize = 12.sp,
             color = colors.textSecondary
@@ -193,7 +192,7 @@ fun HistoryDrawerContent(
             ) {
                 Text(
                     text = Strings.noHistory(language),
-                    fontFamily = HindSiliguriFamily,
+                    fontFamily = NotoSansBengaliFamily,
                     fontSize = 13.5.sp,
                     color = colors.textTertiary,
                     textAlign = TextAlign.Center
@@ -250,7 +249,7 @@ fun HistoryDrawerContent(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = session.title.ifBlank { Strings.newChat(language) },
-                                    fontFamily = HindSiliguriFamily,
+                                    fontFamily = NotoSansBengaliFamily,
                                     fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
                                     fontSize = 13.sp,
                                     color = if (isActive) colors.primary else colors.textPrimary,
@@ -262,7 +261,7 @@ fun HistoryDrawerContent(
                                 val timeText = session.createdAt?.take(10) ?: "recent"
                                 Text(
                                     text = "$msgCount msgs · $timeText",
-                                    fontFamily = HindSiliguriFamily,
+                                    fontFamily = NotoSansBengaliFamily,
                                     fontSize = 11.sp,
                                     color = colors.textTertiary
                                 )
@@ -312,7 +311,7 @@ fun HistoryDrawerContent(
                 val initial = (userName.trim().firstOrNull() ?: 'B').uppercaseChar()
                 Text(
                     text = "$initial",
-                    fontFamily = BalooDa2Family,
+                    fontFamily = NotoSansBengaliFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     color = colors.onPrimary
@@ -324,7 +323,7 @@ fun HistoryDrawerContent(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = userName.ifBlank { "User" },
-                    fontFamily = BalooDa2Family,
+                    fontFamily = NotoSansBengaliFamily,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
                     color = colors.textPrimary,
@@ -333,7 +332,7 @@ fun HistoryDrawerContent(
                 )
                 Text(
                     text = if (loginType == "google" && userEmail.isNotBlank()) userEmail else Strings.guest(language),
-                    fontFamily = HindSiliguriFamily,
+                    fontFamily = NotoSansBengaliFamily,
                     fontSize = 12.sp,
                     color = colors.textSecondary,
                     maxLines = 1,
@@ -350,7 +349,7 @@ fun HistoryDrawerContent(
             title = {
                 Text(
                     text = Strings.deleteChatTitle(language),
-                    fontFamily = BalooDa2Family,
+                    fontFamily = NotoSansBengaliFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 17.sp,
                     color = colors.textPrimary
@@ -359,7 +358,7 @@ fun HistoryDrawerContent(
             text = {
                 Text(
                     text = Strings.deleteChatMsg(language),
-                    fontFamily = HindSiliguriFamily,
+                    fontFamily = NotoSansBengaliFamily,
                     fontSize = 14.sp,
                     color = colors.textSecondary
                 )
@@ -378,7 +377,7 @@ fun HistoryDrawerContent(
                 ) {
                     Text(
                         text = Strings.delete(language),
-                        fontFamily = BalooDa2Family,
+                        fontFamily = NotoSansBengaliFamily,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -390,7 +389,7 @@ fun HistoryDrawerContent(
                 ) {
                     Text(
                         text = Strings.cancel(language),
-                        fontFamily = HindSiliguriFamily,
+                        fontFamily = NotoSansBengaliFamily,
                         color = colors.textSecondary
                     )
                 }
@@ -426,7 +425,7 @@ private fun SidebarPromptItem(
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = label,
-            fontFamily = HindSiliguriFamily,
+            fontFamily = NotoSansBengaliFamily,
             fontSize = 12.5.sp,
             color = colors.textPrimary,
             maxLines = 1,

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,15 +53,15 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.ChatMessage
 import com.example.ui.i18n.Strings
-import com.example.ui.theme.BalooDa2Family
 import com.example.ui.theme.BondhuColorPalette
 import com.example.ui.theme.BondhuTheme
-import com.example.ui.theme.HindSiliguriFamily
+import com.example.ui.theme.NotoSansBengaliFamily
 
 /**
  * ── MESSAGES ──
@@ -163,7 +165,7 @@ fun ChatMessageItem(
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = message.attachmentName,
-                                    fontFamily = HindSiliguriFamily,
+                                    fontFamily = NotoSansBengaliFamily,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = colors.onPrimary
@@ -173,7 +175,8 @@ fun ChatMessageItem(
 
                         Text(
                             text = message.content,
-                            fontFamily = HindSiliguriFamily,
+                            fontFamily = NotoSansBengaliFamily,
+                            fontWeight = FontWeight.Medium,
                             color = colors.onPrimary,
                             fontSize = 15.sp,
                             lineHeight = 22.sp
@@ -228,7 +231,7 @@ fun ChatMessageItem(
                                 Column {
                                     Text(
                                         text = message.errorMessage ?: message.content,
-                                        fontFamily = HindSiliguriFamily,
+                                        fontFamily = NotoSansBengaliFamily,
                                         color = colors.error,
                                         fontSize = 13.5.sp,
                                         fontWeight = FontWeight.Medium,
@@ -254,7 +257,7 @@ fun ChatMessageItem(
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Text(
                                                 text = Strings.retry(language),
-                                                fontFamily = BalooDa2Family,
+                                                fontFamily = NotoSansBengaliFamily,
                                                 fontSize = 13.sp,
                                                 fontWeight = FontWeight.Bold
                                             )
@@ -295,7 +298,7 @@ fun ChatMessageItem(
                                             }
                                             Text(
                                                 text = if (parsed.isThinkingOpen) Strings.thinking(language) else Strings.thinkingDone(language),
-                                                fontFamily = HindSiliguriFamily,
+                                                fontFamily = NotoSansBengaliFamily,
                                                 fontSize = 12.sp,
                                                 color = if (parsed.isThinkingOpen) colors.primary else colors.textSecondary
                                             )
@@ -320,7 +323,7 @@ fun ChatMessageItem(
                                     ) {
                                         Text(
                                             text = parsed.thoughtContent,
-                                            fontFamily = HindSiliguriFamily,
+                                            fontFamily = NotoSansBengaliFamily,
                                             fontSize = 12.sp,
                                             color = colors.textSecondary,
                                             lineHeight = 17.sp
@@ -379,7 +382,7 @@ fun ChatMessageItem(
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(
                                                 text = Strings.copy(language),
-                                                fontFamily = HindSiliguriFamily,
+                                                fontFamily = NotoSansBengaliFamily,
                                                 fontSize = 11.5.sp,
                                                 color = colors.textSecondary
                                             )
@@ -395,7 +398,7 @@ fun ChatMessageItem(
     }
 
 /**
- * Parses markdown into clean Compose text, bold, inline code, lists, and code blocks
+ * Parses markdown into clean Compose text, bold, inline code, lists, headings, tables, and code blocks
  */
 @Composable
 private fun MarkdownTextRenderer(
@@ -407,9 +410,92 @@ private fun MarkdownTextRenderer(
 
     val blocks = remember(content) { splitMarkdownBlocks(content) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         blocks.forEach { block ->
             when (block) {
+                is MarkdownBlock.Heading -> {
+                    val formattedText = remember(block.text, colors) { formatInlineMarkdown(block.text, colors) }
+                    Text(
+                        text = formattedText,
+                        fontFamily = NotoSansBengaliFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = if (block.level <= 2) 18.sp else 16.sp,
+                        color = colors.textPrimary,
+                        lineHeight = if (block.level <= 2) 26.sp else 23.sp,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                    )
+                }
+
+                is MarkdownBlock.Table -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(colors.surface)
+                            .border(1.dp, colors.border, RoundedCornerShape(10.dp))
+                            .horizontalScroll(rememberScrollState())
+                    ) {
+                        Column {
+                            // Header Row
+                            Row(
+                                modifier = Modifier
+                                    .background(colors.surfaceElevated)
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                block.headers.forEach { header ->
+                                    Box(
+                                        modifier = Modifier
+                                            .widthIn(min = 90.dp)
+                                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = formatInlineMarkdown(header, colors),
+                                            fontFamily = NotoSansBengaliFamily,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.5.sp,
+                                            color = colors.primary,
+                                            lineHeight = 19.sp
+                                        )
+                                    }
+                                }
+                            }
+
+                            HorizontalDivider(color = colors.border, thickness = 1.dp)
+
+                            // Data Rows
+                            block.rows.forEachIndexed { rowIndex, row ->
+                                val rowBg = if (rowIndex % 2 == 1) colors.surfaceRaised else colors.surface
+                                Row(
+                                    modifier = Modifier
+                                        .background(rowBg)
+                                        .padding(vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    row.forEachIndexed { colIndex, cellText ->
+                                        Box(
+                                            modifier = Modifier
+                                                .widthIn(min = 90.dp)
+                                                .padding(horizontal = 12.dp, vertical = 7.dp)
+                                        ) {
+                                            Text(
+                                                text = formatInlineMarkdown(cellText, colors),
+                                                fontFamily = NotoSansBengaliFamily,
+                                                fontSize = 13.5.sp,
+                                                color = colors.textPrimary,
+                                                lineHeight = 20.sp
+                                            )
+                                        }
+                                    }
+                                }
+                                if (rowIndex < block.rows.lastIndex) {
+                                    HorizontalDivider(color = colors.border.copy(alpha = 0.5f), thickness = 0.5.dp)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 is MarkdownBlock.CodeBlock -> {
                     // Code Block with Copy button
                     Box(
@@ -445,7 +531,7 @@ private fun MarkdownTextRenderer(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "Copy",
-                                        fontFamily = HindSiliguriFamily,
+                                        fontFamily = NotoSansBengaliFamily,
                                         fontSize = 11.sp,
                                         color = colors.textSecondary
                                     )
@@ -469,7 +555,7 @@ private fun MarkdownTextRenderer(
                     val formattedText = remember(block.text, colors) { formatInlineMarkdown(block.text, colors) }
                     Text(
                         text = formattedText,
-                        fontFamily = HindSiliguriFamily,
+                        fontFamily = NotoSansBengaliFamily,
                         fontSize = 15.sp,
                         color = colors.textPrimary,
                         lineHeight = 23.sp
@@ -484,14 +570,14 @@ private fun MarkdownTextRenderer(
                     ) {
                         Text(
                             text = if (block.orderedNumber != null) "${block.orderedNumber}. " else "• ",
-                            fontFamily = HindSiliguriFamily,
+                            fontFamily = NotoSansBengaliFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             color = colors.primary
                         )
                         Text(
                             text = formattedText,
-                            fontFamily = HindSiliguriFamily,
+                            fontFamily = NotoSansBengaliFamily,
                             fontSize = 15.sp,
                             color = colors.textPrimary,
                             lineHeight = 22.sp,
@@ -505,9 +591,28 @@ private fun MarkdownTextRenderer(
 }
 
 private sealed class MarkdownBlock {
+    data class Heading(val level: Int, val text: String) : MarkdownBlock()
+    data class Table(val headers: List<String>, val rows: List<List<String>>) : MarkdownBlock()
     data class Paragraph(val text: String) : MarkdownBlock()
     data class CodeBlock(val language: String, val code: String) : MarkdownBlock()
     data class ListItem(val text: String, val orderedNumber: Int? = null) : MarkdownBlock()
+}
+
+private fun parseTableRow(raw: String): List<String> {
+    var s = raw.trim()
+    if (s.startsWith("|")) s = s.substring(1)
+    if (s.endsWith("|")) s = s.substring(0, s.length - 1)
+    return s.split("|").map { it.trim() }
+}
+
+private fun isTableSeparator(raw: String): Boolean {
+    val s = raw.trim()
+    if (!s.contains("-")) return false
+    val cells = parseTableRow(s)
+    return cells.isNotEmpty() && cells.all { cell ->
+        val cleaned = cell.replace(":", "").replace(" ", "").trim()
+        cleaned.isNotEmpty() && cleaned.all { it == '-' }
+    }
 }
 
 private fun splitMarkdownBlocks(raw: String): List<MarkdownBlock> {
@@ -525,8 +630,12 @@ private fun splitMarkdownBlocks(raw: String): List<MarkdownBlock> {
         }
     }
 
-    for (line in lines) {
+    var i = 0
+    while (i < lines.size) {
+        val line = lines[i]
         val trimmed = line.trim()
+
+        // Code block start/end
         if (trimmed.startsWith("```")) {
             if (!inCodeBlock) {
                 flushParagraph()
@@ -538,11 +647,43 @@ private fun splitMarkdownBlocks(raw: String): List<MarkdownBlock> {
                 blocks.add(MarkdownBlock.CodeBlock(codeLang, codeContent.toString().trimEnd()))
                 codeContent.setLength(0)
             }
+            i++
             continue
         }
 
         if (inCodeBlock) {
             codeContent.appendLine(line)
+            i++
+            continue
+        }
+
+        // Table check: starts with | or contains | with next line being separator
+        val looksLikeTable = (trimmed.startsWith("|") || (trimmed.contains("|") && !trimmed.startsWith("-") && !trimmed.startsWith("*")))
+        if (looksLikeTable && i + 1 < lines.size && isTableSeparator(lines[i + 1])) {
+            flushParagraph()
+            val headers = parseTableRow(lines[i])
+            i += 2 // skip header and separator
+            val tableRows = mutableListOf<List<String>>()
+            while (i < lines.size) {
+                val rowLine = lines[i].trim()
+                if (rowLine.isEmpty() || (!rowLine.startsWith("|") && !rowLine.contains("|")) || rowLine.startsWith("```")) {
+                    break
+                }
+                tableRows.add(parseTableRow(lines[i]))
+                i++
+            }
+            blocks.add(MarkdownBlock.Table(headers, tableRows))
+            continue
+        }
+
+        // Heading check (# Heading, ## Heading, ### Heading)
+        val headingMatch = Regex("^(#{1,6})\\s+(.*)").find(trimmed)
+        if (headingMatch != null) {
+            flushParagraph()
+            val level = headingMatch.groupValues[1].length
+            val headingText = headingMatch.groupValues[2].trim()
+            blocks.add(MarkdownBlock.Heading(level, headingText))
+            i++
             continue
         }
 
@@ -550,6 +691,7 @@ private fun splitMarkdownBlocks(raw: String): List<MarkdownBlock> {
         if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
             flushParagraph()
             blocks.add(MarkdownBlock.ListItem(trimmed.substring(2).trim()))
+            i++
             continue
         }
 
@@ -560,6 +702,7 @@ private fun splitMarkdownBlocks(raw: String): List<MarkdownBlock> {
             val num = numberedMatch.groupValues[1].toIntOrNull() ?: 1
             val itemText = numberedMatch.groupValues[2]
             blocks.add(MarkdownBlock.ListItem(itemText, num))
+            i++
             continue
         }
 
@@ -567,10 +710,11 @@ private fun splitMarkdownBlocks(raw: String): List<MarkdownBlock> {
             flushParagraph()
         } else {
             if (paragraphContent.isNotEmpty()) {
-                paragraphContent.append(" ")
+                paragraphContent.append("\n")
             }
             paragraphContent.append(line)
         }
+        i++
     }
 
     if (inCodeBlock) {
@@ -591,10 +735,23 @@ private fun formatInlineMarkdown(text: String, colors: BondhuColorPalette): Anno
                 val end = text.indexOf("**", i + 2)
                 if (end != -1) {
                     val boldText = text.substring(i + 2, end)
-                    pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                    pushStyle(SpanStyle(fontWeight = FontWeight.Bold, fontFamily = NotoSansBengaliFamily))
                     append(boldText)
                     pop()
                     i = end + 2
+                    continue
+                }
+            }
+
+            // Italic: *...*
+            if (text[i] == '*' && i + 1 < text.length && text[i + 1] != '*' && text[i + 1] != ' ') {
+                val end = text.indexOf('*', i + 1)
+                if (end != -1 && end > i + 1) {
+                    val italicText = text.substring(i + 1, end)
+                    pushStyle(SpanStyle(fontStyle = FontStyle.Italic, fontFamily = NotoSansBengaliFamily))
+                    append(italicText)
+                    pop()
+                    i = end + 1
                     continue
                 }
             }

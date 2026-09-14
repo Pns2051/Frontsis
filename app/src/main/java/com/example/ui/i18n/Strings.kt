@@ -156,11 +156,15 @@ object Strings {
     fun apiConfigSaved(lang: String): String = if (lang == "bn") "API কনফিগারেশন সংরক্ষিত হয়েছে" else "API configuration saved"
 
     fun formatHttpError(err: String, lang: String): String {
+        val lower = err.lowercase()
         return when {
-            err.contains("402") || err.contains("credit") -> errorOutOfCredits(lang)
-            err.contains("429") || err.contains("rate") -> errorRateLimit(lang)
-            err.contains("503") || err.contains("busy") -> errorServiceBusy(lang)
-            else -> if (err.isNotBlank() && !err.startsWith("HTTP_")) err else errorGeneric(lang)
+            lower.contains("cancel") || lower.contains("standalone") -> ""
+            lower.contains("402") || lower.contains("credit") -> errorOutOfCredits(lang)
+            lower.contains("429") || lower.contains("rate") -> errorRateLimit(lang)
+            lower.contains("503") || lower.contains("busy") -> errorServiceBusy(lang)
+            lower.contains("timeout") || lower.contains("timed out") -> if (lang == "bn") "অনুরোধের সময় শেষ হয়ে গেছে। অনুগ্রহ করে আবার চেষ্টা করো।" else "Request timed out. Please try again."
+            lower.contains("network") || lower.contains("connect") || lower.contains("unknownhost") -> if (lang == "bn") "ইন্টারনেট সংযোগে সমস্যা হয়েছে। সংযোগ যাচাই করে আবার চেষ্টা করো।" else "Network error. Please check your connection."
+            else -> if (err.isNotBlank() && !err.startsWith("HTTP_") && !err.contains("Exception")) err else errorGeneric(lang)
         }
     }
 

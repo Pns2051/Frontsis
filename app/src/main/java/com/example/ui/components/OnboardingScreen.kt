@@ -157,15 +157,19 @@ fun OnboardingScreen(
                 onGoogleSignInSuccess(account)
             }
         } catch (e: ApiException) {
-            val msg = when (e.statusCode) {
-                12501 -> "Sign-in cancelled"
-                12500 -> "Google Play services error (12500): Check SHA-1 in Firebase Console"
-                10 -> "Configuration error (Code 10): App SHA-1 is not registered in Firebase Console"
-                7 -> "Network error: Please check your internet connection"
-                else -> "Google sign-in error (code ${e.statusCode})"
+            if (e.statusCode == 12501) {
+                // User simply cancelled the picker - do not show error banner
+                authErrorMessage = null
+            } else {
+                val msg = when (e.statusCode) {
+                    12500 -> "Google Play services error (12500): Check SHA-1 in Firebase Console"
+                    10 -> "Configuration error (Code 10): App SHA-1 is not registered in Firebase Console"
+                    7 -> "Network error: Please check your internet connection"
+                    else -> "Google sign-in error (code ${e.statusCode})"
+                }
+                authErrorMessage = msg
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
             }
-            authErrorMessage = msg
-            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -495,7 +499,15 @@ fun OnboardingScreen(
                                         isAuthLoading = true
                                         try {
                                             val client = AuthManager.getGoogleSignInClient(context)
-                                            googleSignInLauncher.launch(client.signInIntent)
+                                            client.signOut().addOnCompleteListener {
+                                                try {
+                                                    googleSignInLauncher.launch(client.signInIntent)
+                                                } catch (ex: Exception) {
+                                                    isAuthLoading = false
+                                                    authErrorMessage = ex.localizedMessage
+                                                    Toast.makeText(context, ex.localizedMessage ?: "Could not start Google sign in", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
                                         } catch (e: Exception) {
                                             isAuthLoading = false
                                             authErrorMessage = e.localizedMessage

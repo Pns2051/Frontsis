@@ -25,7 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.BondhuTheme
-import com.example.ui.theme.HindSiliguriFamily
+import com.example.ui.theme.NotoSansBengaliFamily
 import kotlinx.coroutines.delay
 
 /**
@@ -81,7 +81,7 @@ fun SplashScreen(
             // Subtitle
             Text(
                 text = if (language == "bn") "বাংলাদেশের নিজস্ব এআই" else "Bangladesh's Own AI Companion",
-                fontFamily = HindSiliguriFamily,
+                fontFamily = NotoSansBengaliFamily,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 color = colors.textSecondary

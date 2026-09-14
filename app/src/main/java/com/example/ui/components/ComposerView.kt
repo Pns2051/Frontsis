@@ -71,9 +71,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.i18n.Strings
-import com.example.ui.theme.BalooDa2Family
 import com.example.ui.theme.BondhuTheme
-import com.example.ui.theme.HindSiliguriFamily
+import com.example.ui.theme.NotoSansBengaliFamily
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -174,7 +173,7 @@ fun ComposerView(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "${file.name} (${file.sizeText})",
-                            fontFamily = HindSiliguriFamily,
+                            fontFamily = NotoSansBengaliFamily,
                             fontSize = 12.sp,
                             color = colors.textPrimary,
                             maxLines = 1,
@@ -238,7 +237,7 @@ fun ComposerView(
                     if (text.isEmpty()) {
                         Text(
                             text = Strings.composerPlaceholder(language),
-                            fontFamily = HindSiliguriFamily,
+                            fontFamily = NotoSansBengaliFamily,
                             fontSize = 15.sp,
                             color = colors.textSecondary
                         )
@@ -251,7 +250,7 @@ fun ComposerView(
                             .heightIn(min = 22.dp, max = 120.dp)
                             .testTag("chat_input_field"),
                         textStyle = TextStyle(
-                            fontFamily = HindSiliguriFamily,
+                            fontFamily = NotoSansBengaliFamily,
                             fontSize = 15.sp,
                             color = colors.textPrimary
                         ),
@@ -306,7 +305,7 @@ fun ComposerView(
                     Spacer(modifier = Modifier.width(2.dp))
                     Text(
                         text = if (currentModel == "reasoning") "5.3" else "Light",
-                        fontFamily = BalooDa2Family,
+                        fontFamily = NotoSansBengaliFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.5.sp,
                         color = colors.primary

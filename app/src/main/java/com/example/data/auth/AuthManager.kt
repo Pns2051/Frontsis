@@ -34,6 +34,14 @@ object AuthManager {
     val currentUser: FirebaseUser?
         get() = auth?.currentUser
 
+    fun init(context: Context) {
+        try {
+            if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
+                com.google.firebase.FirebaseApp.initializeApp(context)
+            }
+        } catch (_: Exception) {}
+    }
+
     fun getRuntimeSha1(context: Context): String {
         return try {
             val packageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
@@ -80,6 +88,7 @@ object AuthManager {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(clientId)
             .requestEmail()
+            .requestProfile()
             .build()
         return GoogleSignIn.getClient(context, gso)
     }
@@ -87,10 +96,23 @@ object AuthManager {
     suspend fun signInWithGoogleCredential(account: GoogleSignInAccount): Result<FirebaseUser> {
         val firebaseAuth = auth ?: return Result.failure(Exception("Firebase is not initialized"))
         return try {
-            val idToken = account.idToken ?: return Result.failure(Exception("Missing Google ID Token"))
+            val idToken = account.idToken
+            if (idToken.isNullOrBlank()) {
+                return Result.failure(Exception("Google Play services did not return an ID token. Please verify that the Web Client ID is valid."))
+            }
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             val authResult = firebaseAuth.signInWithCredential(credential).await()
             val user = authResult.user ?: return Result.failure(Exception("Firebase user is null"))
+            // Ensure displayName is updated from Google account if missing in Firebase
+            val googleName = account.displayName
+            if (!googleName.isNullOrBlank() && user.displayName.isNullOrBlank()) {
+                try {
+                    val updateReq = UserProfileChangeRequest.Builder()
+                        .setDisplayName(googleName.trim())
+                        .build()
+                    user.updateProfile(updateReq).await()
+                } catch (_: Exception) {}
+            }
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
@@ -136,9 +158,23 @@ object AuthManager {
         }
     }
 
-    fun signOut(context: Context) {
+    suspend fun signOut(context: Context) {
         try {
             auth?.signOut()
+        } catch (_: Exception) {}
+        try {
+            getGoogleSignInClient(context).signOut().await()
+        } catch (_: Exception) {}
+        try {
+            getGoogleSignInClient(context).revokeAccess().await()
+        } catch (_: Exception) {}
+    }
+
+    fun signOutSync(context: Context) {
+        try {
+            auth?.signOut()
+        } catch (_: Exception) {}
+        try {
             getGoogleSignInClient(context).signOut()
         } catch (_: Exception) {}
     }

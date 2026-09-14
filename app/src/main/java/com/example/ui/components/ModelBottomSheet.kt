@@ -37,9 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.i18n.Strings
-import com.example.ui.theme.BalooDa2Family
 import com.example.ui.theme.BondhuTheme
-import com.example.ui.theme.HindSiliguriFamily
+import com.example.ui.theme.NotoSansBengaliFamily
 
 /**
  * ── MODEL SHEET (bottom sheet) ──
@@ -75,7 +74,7 @@ fun ModelBottomSheet(
             // "Select AI Model"
             Text(
                 text = Strings.selectModel(language),
-                fontFamily = BalooDa2Family,
+                fontFamily = NotoSansBengaliFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 17.sp,
                 color = colors.textPrimary
@@ -180,7 +179,7 @@ private fun ModelOptionCard(
                 ) {
                     Text(
                         text = title,
-                        fontFamily = BalooDa2Family,
+                        fontFamily = NotoSansBengaliFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
                         color = colors.textPrimary
@@ -195,7 +194,7 @@ private fun ModelOptionCard(
                     ) {
                         Text(
                             text = badgeText,
-                            fontFamily = HindSiliguriFamily,
+                            fontFamily = NotoSansBengaliFamily,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 10.sp,
                             color = badgeColor
@@ -207,7 +206,7 @@ private fun ModelOptionCard(
 
                 Text(
                     text = description,
-                    fontFamily = HindSiliguriFamily,
+                    fontFamily = NotoSansBengaliFamily,
                     fontSize = 13.sp,
                     color = colors.textSecondary
                 )

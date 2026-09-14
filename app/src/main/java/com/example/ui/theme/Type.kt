@@ -8,93 +8,90 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.R
 
-val BalooDa2Family = FontFamily(
-    Font(R.font.baloo_da_2, FontWeight.Normal),
-    Font(R.font.baloo_da_2, FontWeight.Medium),
-    Font(R.font.baloo_da_2, FontWeight.SemiBold),
-    Font(R.font.baloo_da_2, FontWeight.Bold)
+val NotoSansBengaliFamily = FontFamily(
+    Font(R.font.noto_sans_bengali_regular, FontWeight.Normal),
+    Font(R.font.noto_sans_bengali_medium, FontWeight.Medium),
+    Font(R.font.noto_sans_bengali_semibold, FontWeight.SemiBold),
+    Font(R.font.noto_sans_bengali_bold, FontWeight.Bold)
 )
 
-val HindSiliguriFamily = FontFamily(
-    Font(R.font.hind_siliguri_regular, FontWeight.Normal),
-    Font(R.font.hind_siliguri_medium, FontWeight.Medium),
-    Font(R.font.hind_siliguri_medium, FontWeight.SemiBold),
-    Font(R.font.hind_siliguri_medium, FontWeight.Bold)
-)
+// Legacy aliases mapped directly to Noto Sans Bengali for crisp, sturdy, unclipped Bengali rendering
+val BalooDa2Family = NotoSansBengaliFamily
+val HindSiliguriFamily = NotoSansBengaliFamily
 
-// Set of Material typography styles using Baloo Da 2 for headings/buttons and Hind Siliguri for body
+// Set of Material typography styles using Noto Sans Bengali with generous line heights suited for complex Bengali conjuncts and matras
 val Typography = Typography(
     headlineLarge = TextStyle(
-        fontFamily = BalooDa2Family,
+        fontFamily = NotoSansBengaliFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
-        lineHeight = 34.sp
+        lineHeight = 36.sp
     ),
     headlineMedium = TextStyle(
-        fontFamily = BalooDa2Family,
+        fontFamily = NotoSansBengaliFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 24.sp,
-        lineHeight = 30.sp
+        lineHeight = 32.sp
     ),
     headlineSmall = TextStyle(
-        fontFamily = BalooDa2Family,
+        fontFamily = NotoSansBengaliFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
-        lineHeight = 26.sp
+        lineHeight = 28.sp
     ),
     titleLarge = TextStyle(
-        fontFamily = BalooDa2Family,
+        fontFamily = NotoSansBengaliFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 18.sp,
-        lineHeight = 24.sp
+        lineHeight = 26.sp
     ),
     titleMedium = TextStyle(
-        fontFamily = BalooDa2Family,
+        fontFamily = NotoSansBengaliFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 22.sp
-    ),
-    titleSmall = TextStyle(
-        fontFamily = BalooDa2Family,
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp
-    ),
-    bodyLarge = TextStyle(
-        fontFamily = HindSiliguriFamily,
-        fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp
     ),
-    bodyMedium = TextStyle(
-        fontFamily = HindSiliguriFamily,
+    titleSmall = TextStyle(
+        fontFamily = NotoSansBengaliFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 22.sp
+    ),
+    bodyLarge = TextStyle(
+        fontFamily = NotoSansBengaliFamily,
         fontWeight = FontWeight.Normal,
+        fontSize = 16.sp,
+        lineHeight = 25.sp
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = NotoSansBengaliFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 14.5.sp,
+        lineHeight = 22.sp
+    ),
+    bodySmall = TextStyle(
+        fontFamily = NotoSansBengaliFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.5.sp,
+        lineHeight = 18.sp
+    ),
+    labelLarge = TextStyle(
+        fontFamily = NotoSansBengaliFamily,
+        fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp
     ),
-    bodySmall = TextStyle(
-        fontFamily = HindSiliguriFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 16.sp
-    ),
-    labelLarge = TextStyle(
-        fontFamily = BalooDa2Family,
+    labelMedium = TextStyle(
+        fontFamily = NotoSansBengaliFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
+        fontSize = 12.5.sp,
         lineHeight = 18.sp
     ),
-    labelMedium = TextStyle(
-        fontFamily = BalooDa2Family,
-        fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
-        lineHeight = 16.sp
-    ),
     labelSmall = TextStyle(
-        fontFamily = HindSiliguriFamily,
+        fontFamily = NotoSansBengaliFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 11.sp,
-        lineHeight = 14.sp
+        lineHeight = 16.sp
     )
 )
 

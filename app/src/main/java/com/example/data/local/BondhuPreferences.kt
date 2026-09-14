@@ -194,10 +194,14 @@ class BondhuPreferences(context: Context) {
     }
 
     fun logout() {
-        val currentDeviceId = getDeviceId()
-        prefs.edit().clear().apply()
-        // Retain device_id so backend requests remain consistent
-        prefs.edit().putString(KEY_DEVICE_ID, currentDeviceId).apply()
+        prefs.edit()
+            .remove(KEY_USER_NAME)
+            .remove(KEY_USER_EMAIL)
+            .remove(KEY_USER_DESC)
+            .putBoolean(KEY_IS_LOGGED_IN, false)
+            .putString(KEY_LOGIN_TYPE, "guest")
+            .putBoolean(KEY_ONBOARDING_DONE, false)
+            .apply()
     }
 
     fun resetAll() {

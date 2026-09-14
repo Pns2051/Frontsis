@@ -251,7 +251,13 @@ fun SettingsDialog(
                                 onClick = {
                                     try {
                                         val client = AuthManager.getGoogleSignInClient(context)
-                                        googleSignInLauncher.launch(client.signInIntent)
+                                        client.signOut().addOnCompleteListener {
+                                            try {
+                                                googleSignInLauncher.launch(client.signInIntent)
+                                            } catch (ex: Exception) {
+                                                Toast.makeText(context, ex.localizedMessage ?: "Could not start Google sign in", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
                                     } catch (e: Exception) {
                                         Toast.makeText(context, e.localizedMessage ?: "Could not start Google sign in", Toast.LENGTH_SHORT).show()
                                     }
