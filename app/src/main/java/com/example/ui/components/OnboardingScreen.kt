@@ -10,20 +10,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,26 +34,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -80,8 +64,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
@@ -101,49 +83,41 @@ import kotlin.math.roundToInt
 // Fully solid rich vibrant green for onboarding action buttons (never transparent)
 private val SolidButtonGreen = Color(0xFF16A34A)
 
-
 /**
- * SCREENS 2-5: ONBOARDING
- * Layout (all 4 steps):
- *   48dp top padding
- *   Character illustration (upper portion, 120dp)
- *   Title: 28sp Baloo Da 2, center
- *   Subtitle: 14sp secondary, center
- *   Content: middle
- *   Primary button: bottom, primary green, 12dp radius, 100% width, 52dp height, 15sp bold text
- *   Below: 4 progress dots
+ * ONBOARDING FLOW:
+ * Step 1: Language selection (Bangla / English)
+ * Step 2: Sign-In Screen:
+ *   - "Continue with Google" -> If existing/normal account has name, proceeds directly to Chat ("if normal then ok").
+ *                               If new account without name, moves to Step 3 to ask name ("if new then ask name").
+ *   - "Continue as guest"   -> Moves to Step 3 to ask name ("if guest then ask name").
+ *   - Email login is completely removed.
+ * Step 3: Name Input Screen (shown when new Google account needs a name, or when guest mode is chosen).
  */
 @Composable
 fun OnboardingScreen(
     currentLanguage: String,
     onLanguageChange: (String) -> Unit,
     onFinishOnboarding: (userName: String) -> Unit,
-    onGoogleSignInSuccess: (GoogleSignInAccount) -> Unit = {},
-    onEmailSignIn: (email: String, pass: String, (Boolean, String?) -> Unit) -> Unit = { _, _, _ -> },
-    onEmailSignUp: (name: String, email: String, pass: String, (Boolean, String?) -> Unit) -> Unit = { _, _, _, _ -> },
-    onAnonymousSignIn: ((Boolean, String?) -> Unit) -> Unit = { it(true, null) },
+    onGoogleSignInSuccess: (account: GoogleSignInAccount, customName: String?, onResult: (Boolean, String?) -> Unit) -> Unit = { _, _, _ -> },
+    onAnonymousSignIn: (name: String, onResult: (Boolean, String?) -> Unit) -> Unit = { _, it -> it(true, null) },
     modifier: Modifier = Modifier
 ) {
     val colors = BondhuTheme.colors
-    var step by remember { mutableIntStateOf(1) }
+    var step by remember { mutableIntStateOf(1) } // 1 = Language, 2 = Login / Guest, 3 = Name (for new user / guest)
     var selectedLanguage by remember { mutableStateOf(currentLanguage) }
     var enteredName by remember { mutableStateOf("") }
     var nameError by remember { mutableStateOf(false) }
 
-    var acceptedPrivacy by remember { mutableStateOf(false) }
-    var acceptedTerms by remember { mutableStateOf(false) }
-
     var isAuthLoading by remember { mutableStateOf(false) }
-    var showEmailAuth by remember { mutableStateOf(false) }
-    var isSignUpMode by remember { mutableStateOf(false) }
-    var emailInput by remember { mutableStateOf("") }
-    var passwordInput by remember { mutableStateOf("") }
-    var isPasswordVisible by remember { mutableStateOf(false) }
     var authErrorMessage by remember { mutableStateOf<String?>(null) }
+    var pendingGoogleAccount by remember { mutableStateOf<GoogleSignInAccount?>(null) }
+    var isGuestFlow by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val shakeOffset = remember { Animatable(0f) }
+
+    val totalSteps = if (step == 3) 3 else 2
 
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -153,12 +127,28 @@ fun OnboardingScreen(
         try {
             val account = task.getResult(ApiException::class.java)
             if (account != null) {
-                isAuthLoading = true
-                onGoogleSignInSuccess(account)
+                val googleDisplayName = account.displayName?.trim().orEmpty()
+                // If user already has a real name in Google ("normal user"):
+                if (googleDisplayName.isNotBlank() && !googleDisplayName.equals("User", ignoreCase = true)) {
+                    isAuthLoading = true
+                    authErrorMessage = null
+                    onGoogleSignInSuccess(account, null) { ok, err ->
+                        isAuthLoading = false
+                        if (!ok && err != null) {
+                            authErrorMessage = err
+                        }
+                    }
+                } else {
+                    // New user without a display name: ask for their name!
+                    pendingGoogleAccount = account
+                    isGuestFlow = false
+                    authErrorMessage = null
+                    step = 3
+                }
             }
         } catch (e: ApiException) {
             if (e.statusCode == 12501) {
-                // User simply cancelled the picker - do not show error banner
+                // User cancelled the picker - do not show error banner
                 authErrorMessage = null
             } else {
                 val msg = when (e.statusCode) {
@@ -226,6 +216,7 @@ fun OnboardingScreen(
                 // Top Portion: Sleek, clean, minimalist explanation card
                 OnboardingExplanationCard(
                     currentStep = currentStep,
+                    totalSteps = totalSteps,
                     selectedLanguage = selectedLanguage,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -242,813 +233,532 @@ fun OnboardingScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                    when (currentStep) {
-                        // ── STEP 1: LANGUAGE ──
-                        1 -> {
-                            Text(
-                                text = Strings.onboardingStep1Title(selectedLanguage),
-                                fontFamily = BalooDa2Family,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 28.sp,
-                                color = colors.textPrimary,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = Strings.onboardingStep1Sub(selectedLanguage),
-                                fontFamily = HindSiliguriFamily,
-                                fontSize = 14.sp,
-                                color = colors.textSecondary,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(28.dp))
-
-                            // Two cards side by side: বাংলা / Bangla & English / International
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)
-                            ) {
-                                val isBn = selectedLanguage == "bn"
-                                // বাংলা Card
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(116.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(
-                                            if (isBn) colors.primary.copy(alpha = 0.12f) else colors.surface
-                                        )
-                                        .border(
-                                            width = 2.dp,
-                                            color = if (isBn) colors.primary else colors.border,
-                                            shape = RoundedCornerShape(16.dp)
-                                        )
-                                        .clickable {
-                                            selectedLanguage = "bn"
-                                            onLanguageChange("bn")
-                                        }
-                                        .testTag("lang_card_bn"),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            text = "বাংলা",
-                                            fontFamily = BalooDa2Family,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 28.sp,
-                                            color = if (isBn) colors.primary else colors.textPrimary
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = "Bangla",
-                                            fontFamily = HindSiliguriFamily,
-                                            fontSize = 12.sp,
-                                            color = colors.textSecondary
-                                        )
-                                    }
-                                }
-
-                                val isEn = selectedLanguage == "en"
-                                // English Card
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(116.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(
-                                            if (isEn) colors.primary.copy(alpha = 0.12f) else colors.surface
-                                        )
-                                        .border(
-                                            width = 2.dp,
-                                            color = if (isEn) colors.primary else colors.border,
-                                            shape = RoundedCornerShape(16.dp)
-                                        )
-                                        .clickable {
-                                            selectedLanguage = "en"
-                                            onLanguageChange("en")
-                                        }
-                                        .testTag("lang_card_en"),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            text = "English",
-                                            fontFamily = BalooDa2Family,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 28.sp,
-                                            color = if (isEn) colors.primary else colors.textPrimary
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = "International",
-                                            fontFamily = HindSiliguriFamily,
-                                            fontSize = 12.sp,
-                                            color = colors.textSecondary
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // ── STEP 2: NAME ──
-                        2 -> {
-                            Text(
-                                text = Strings.onboardingStep2Title(selectedLanguage),
-                                fontFamily = BalooDa2Family,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 28.sp,
-                                color = colors.textPrimary,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = if (selectedLanguage == "bn") "বন্ধু তোমাকে এই নামে ডাকবে" else "Bondhu will call you by this name",
-                                fontFamily = HindSiliguriFamily,
-                                fontSize = 14.sp,
-                                color = colors.textSecondary,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(20.dp))
-
-                            // Live Interactive Avatar Preview with emerald ring and dynamic initial
-                            Box(
-                                modifier = Modifier
-                                    .size(68.dp)
-                                    .clip(CircleShape)
-                                    .background(SolidButtonGreen)
-                                    .border(2.5.dp, colors.border, CircleShape)
-                                    .testTag("onboarding_avatar_preview"),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                val displayInitial = enteredName.trim().firstOrNull()?.uppercaseChar()
-                                if (displayInitial != null) {
-                                    Text(
-                                        text = "$displayInitial",
-                                        fontFamily = BalooDa2Family,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 28.sp,
-                                        color = Color.White
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = "Avatar",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(34.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            // Input: surfaceElevated bg, 2px border, 12dp radius, centered text
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .offset { IntOffset(shakeOffset.value.roundToInt(), 0) }
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(colors.surfaceElevated)
-                                    .border(
-                                        width = 2.dp,
-                                        color = if (nameError) colors.error else colors.border,
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (enteredName.isEmpty()) {
-                                    Text(
-                                        text = Strings.onboardingStep2Placeholder(selectedLanguage),
-                                        fontFamily = HindSiliguriFamily,
-                                        fontSize = 16.sp,
-                                        color = colors.textSecondary,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                                BasicTextField(
-                                    value = enteredName,
-                                    onValueChange = {
-                                        enteredName = it
-                                        if (nameError && it.isNotBlank()) {
-                                            nameError = false
-                                        }
-                                    },
-                                    singleLine = true,
-                                    textStyle = TextStyle(
-                                        fontFamily = BalooDa2Family,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 18.sp,
-                                        color = colors.textPrimary,
-                                        textAlign = TextAlign.Center
-                                    ),
-                                    cursorBrush = SolidColor(colors.primary),
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                    keyboardActions = KeyboardActions(
-                                        onDone = {
-                                            if (enteredName.trim().isEmpty()) {
-                                                nameError = true
-                                                triggerShake()
-                                                Toast.makeText(
-                                                    context,
-                                                    Strings.onboardingStep2Validation(selectedLanguage),
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            } else {
-                                                step = 3
-                                            }
-                                        }
-                                    ),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .testTag("name_input_field")
+                        when (currentStep) {
+                            // ── STEP 1: LANGUAGE ──
+                            1 -> {
+                                Text(
+                                    text = Strings.onboardingStep1Title(selectedLanguage),
+                                    fontFamily = BalooDa2Family,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 28.sp,
+                                    color = colors.textPrimary,
+                                    textAlign = TextAlign.Center
                                 )
-                            }
-                        }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = Strings.onboardingStep1Sub(selectedLanguage),
+                                    fontFamily = HindSiliguriFamily,
+                                    fontSize = 14.sp,
+                                    color = colors.textSecondary,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(28.dp))
 
-                        // ── STEP 3: SIGN IN ──
-                        3 -> {
-                            Text(
-                                text = Strings.onboardingStep3Title(selectedLanguage),
-                                fontFamily = BalooDa2Family,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 28.sp,
-                                color = colors.textPrimary,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = if (selectedLanguage == "bn") "যেভাবে সুবিধা সেভাবে চালিয়ে যাও" else "Continue the way you like",
-                                fontFamily = HindSiliguriFamily,
-                                fontSize = 14.sp,
-                                color = colors.textSecondary,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(28.dp))
-
-                            // Google Button: [G] "Continue with Google"
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(colors.surface)
-                                    .border(2.dp, colors.border, RoundedCornerShape(12.dp))
-                                    .clickable(enabled = !isAuthLoading) {
-                                        authErrorMessage = null
-                                        isAuthLoading = true
-                                        try {
-                                            val client = AuthManager.getGoogleSignInClient(context)
-                                            client.signOut().addOnCompleteListener {
-                                                try {
-                                                    googleSignInLauncher.launch(client.signInIntent)
-                                                } catch (ex: Exception) {
-                                                    isAuthLoading = false
-                                                    authErrorMessage = ex.localizedMessage
-                                                    Toast.makeText(context, ex.localizedMessage ?: "Could not start Google sign in", Toast.LENGTH_SHORT).show()
-                                                }
-                                            }
-                                        } catch (e: Exception) {
-                                            isAuthLoading = false
-                                            authErrorMessage = e.localizedMessage
-                                            Toast.makeText(context, e.localizedMessage ?: "Could not start Google sign in", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                    .testTag("google_login_btn"),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (isAuthLoading && !showEmailAuth) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(18.dp),
-                                            color = colors.primary,
-                                            strokeWidth = 2.dp
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text(
-                                            text = if (selectedLanguage == "bn") "লগইন হচ্ছে..." else "Signing in...",
-                                            fontFamily = BalooDa2Family,
-                                            fontWeight = FontWeight.Medium,
-                                            fontSize = 14.sp,
-                                            color = colors.textSecondary
-                                        )
-                                    }
-                                } else {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        // Google "G" circular badge
-                                        Box(
-                                            modifier = Modifier
-                                                .size(22.dp)
-                                                .clip(CircleShape)
-                                                .background(Color.White),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = "G",
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 13.sp,
-                                                color = Color(0xFF4285F4)
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text(
-                                            text = Strings.googleSignIn(selectedLanguage),
-                                            fontFamily = BalooDa2Family,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 15.sp,
-                                            color = colors.textPrimary
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            if (authErrorMessage != null && !showEmailAuth) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(colors.error.copy(alpha = 0.12f))
-                                        .border(1.dp, colors.error.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
-                                        .padding(12.dp)
+                                // Two cards side by side: বাংলা / Bangla & English / International
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    val runtimeSha1 = remember(context) { com.example.data.auth.AuthManager.getRuntimeSha1(context) }
-                                    Column {
-                                        Text(
-                                            text = authErrorMessage ?: "",
-                                            fontFamily = HindSiliguriFamily,
-                                            fontSize = 12.5.sp,
-                                            color = colors.error,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = "App SHA-1: $runtimeSha1",
-                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                            fontSize = 10.sp,
-                                            color = colors.textSecondary
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            // Button to copy runtime SHA-1
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(6.dp))
-                                                    .background(colors.surfaceElevated)
-                                                    .border(1.dp, colors.border, RoundedCornerShape(6.dp))
-                                                    .clickable {
-                                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                                        clipboard.setPrimaryClip(ClipData.newPlainText("SHA-1", runtimeSha1))
-                                                        Toast.makeText(context, "SHA-1 copied: $runtimeSha1", Toast.LENGTH_SHORT).show()
-                                                    }
-                                                    .padding(horizontal = 8.dp, vertical = 6.dp)
-                                            ) {
-                                                Text(
-                                                    text = "📋 Copy SHA-1",
-                                                    fontFamily = HindSiliguriFamily,
-                                                    fontSize = 11.5.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    color = colors.textPrimary
-                                                )
-                                            }
-
-                                            // Quick bypass button: "Skip to Chat"
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(6.dp))
-                                                    .background(SolidButtonGreen)
-                                                    .clickable {
-                                                        onAnonymousSignIn { _, _ -> }
-                                                        step = 4
-                                                    }
-                                                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                                            ) {
-                                                Text(
-                                                    text = "🚀 Skip to Chat",
-                                                    fontFamily = HindSiliguriFamily,
-                                                    fontSize = 11.5.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    color = Color.White
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(12.dp))
-                            }
-
-                            // Email Button / Expandable form
-                            if (!showEmailAuth) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(48.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(colors.surface)
-                                        .border(2.dp, colors.border, RoundedCornerShape(12.dp))
-                                        .clickable {
-                                            showEmailAuth = true
-                                            authErrorMessage = null
-                                        }
-                                        .testTag("email_login_toggle_btn"),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Email,
-                                            contentDescription = null,
-                                            tint = colors.primary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text(
-                                            text = Strings.continueWithEmail(selectedLanguage),
-                                            fontFamily = BalooDa2Family,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 15.sp,
-                                            color = colors.textPrimary
-                                        )
-                                    }
-                                }
-                            } else {
-                                // Expanded Email/Password Card
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(colors.surfaceElevated)
-                                        .border(1.dp, colors.border, RoundedCornerShape(12.dp))
-                                        .padding(14.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = if (isSignUpMode) Strings.signUp(selectedLanguage) else Strings.signIn(selectedLanguage),
-                                            fontFamily = BalooDa2Family,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 16.sp,
-                                            color = colors.textPrimary
-                                        )
-                                        Text(
-                                            text = if (isSignUpMode) Strings.signIn(selectedLanguage) else Strings.signUp(selectedLanguage),
-                                            fontFamily = HindSiliguriFamily,
-                                            fontSize = 13.sp,
-                                            color = colors.primary,
-                                            textDecoration = TextDecoration.Underline,
-                                            modifier = Modifier.clickable {
-                                                isSignUpMode = !isSignUpMode
-                                                authErrorMessage = null
-                                            }
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(10.dp))
-
-                                    // Email field
+                                    val isBn = selectedLanguage == "bn"
+                                    // বাংলা Card
                                     Box(
                                         modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(colors.surface)
-                                            .border(1.dp, colors.border, RoundedCornerShape(8.dp))
-                                            .padding(horizontal = 12.dp, vertical = 10.dp)
+                                            .weight(1f)
+                                            .height(116.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(
+                                                if (isBn) colors.primary.copy(alpha = 0.12f) else colors.surface
+                                            )
+                                            .border(
+                                                width = 2.dp,
+                                                color = if (isBn) colors.primary else colors.border,
+                                                shape = RoundedCornerShape(16.dp)
+                                            )
+                                            .clickable {
+                                                selectedLanguage = "bn"
+                                                onLanguageChange("bn")
+                                            }
+                                            .testTag("lang_card_bn"),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        if (emailInput.isEmpty()) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                             Text(
-                                                text = Strings.emailLabel(selectedLanguage),
+                                                text = "বাংলা",
+                                                fontFamily = BalooDa2Family,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 28.sp,
+                                                color = if (isBn) colors.primary else colors.textPrimary
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "Bangla",
                                                 fontFamily = HindSiliguriFamily,
+                                                fontSize = 12.sp,
+                                                color = colors.textSecondary
+                                            )
+                                        }
+                                    }
+
+                                    val isEn = selectedLanguage == "en"
+                                    // English Card
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(116.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(
+                                                if (isEn) colors.primary.copy(alpha = 0.12f) else colors.surface
+                                            )
+                                            .border(
+                                                width = 2.dp,
+                                                color = if (isEn) colors.primary else colors.border,
+                                                shape = RoundedCornerShape(16.dp)
+                                            )
+                                            .clickable {
+                                                selectedLanguage = "en"
+                                                onLanguageChange("en")
+                                            }
+                                            .testTag("lang_card_en"),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(
+                                                text = "English",
+                                                fontFamily = BalooDa2Family,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 28.sp,
+                                                color = if (isEn) colors.primary else colors.textPrimary
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "International",
+                                                fontFamily = HindSiliguriFamily,
+                                                fontSize = 12.sp,
+                                                color = colors.textSecondary
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── STEP 2: SIGN IN / LOGIN ──
+                            2 -> {
+                                Text(
+                                    text = Strings.onboardingStep3Title(selectedLanguage),
+                                    fontFamily = BalooDa2Family,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 28.sp,
+                                    color = colors.textPrimary,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = if (selectedLanguage == "bn") "যেভাবে সুবিধা সেভাবে চালিয়ে যাও" else "Continue the way you like",
+                                    fontFamily = HindSiliguriFamily,
+                                    fontSize = 14.sp,
+                                    color = colors.textSecondary,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(28.dp))
+
+                                // Google Button: [G] "Continue with Google"
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(50.dp)
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(colors.surface)
+                                        .border(2.dp, colors.border, RoundedCornerShape(14.dp))
+                                        .clickable(enabled = !isAuthLoading) {
+                                            authErrorMessage = null
+                                            isAuthLoading = true
+                                            try {
+                                                val client = AuthManager.getGoogleSignInClient(context)
+                                                client.signOut().addOnCompleteListener {
+                                                    try {
+                                                        googleSignInLauncher.launch(client.signInIntent)
+                                                    } catch (ex: Exception) {
+                                                        isAuthLoading = false
+                                                        authErrorMessage = ex.localizedMessage
+                                                        Toast.makeText(context, ex.localizedMessage ?: "Could not start Google sign in", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                isAuthLoading = false
+                                                authErrorMessage = e.localizedMessage
+                                                Toast.makeText(context, e.localizedMessage ?: "Could not start Google sign in", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                        .testTag("google_login_btn"),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isAuthLoading) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(18.dp),
+                                                color = colors.primary,
+                                                strokeWidth = 2.dp
+                                            )
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Text(
+                                                text = if (selectedLanguage == "bn") "লগইন হচ্ছে..." else "Signing in...",
+                                                fontFamily = BalooDa2Family,
+                                                fontWeight = FontWeight.Medium,
                                                 fontSize = 14.sp,
                                                 color = colors.textSecondary
                                             )
                                         }
-                                        BasicTextField(
-                                            value = emailInput,
-                                            onValueChange = { emailInput = it },
-                                            singleLine = true,
-                                            textStyle = TextStyle(
-                                                fontFamily = HindSiliguriFamily,
-                                                fontSize = 14.sp,
+                                    } else {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            // Google "G" circular badge
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(24.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color.White),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "G",
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 14.sp,
+                                                    color = Color(0xFF4285F4)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Text(
+                                                text = Strings.googleSignIn(selectedLanguage),
+                                                fontFamily = BalooDa2Family,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 15.sp,
                                                 color = colors.textPrimary
-                                            ),
-                                            cursorBrush = SolidColor(colors.primary),
-                                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
+                                            )
+                                        }
                                     }
+                                }
 
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    // Password field
+                                if (authErrorMessage != null) {
+                                    Spacer(modifier = Modifier.height(12.dp))
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(colors.surface)
-                                            .border(1.dp, colors.border, RoundedCornerShape(8.dp))
-                                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(colors.error.copy(alpha = 0.12f))
+                                            .border(1.dp, colors.error.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                            .padding(12.dp)
                                     ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Box(modifier = Modifier.weight(1f)) {
-                                                if (passwordInput.isEmpty()) {
+                                        val runtimeSha1 = remember(context) { AuthManager.getRuntimeSha1(context) }
+                                        Column {
+                                            Text(
+                                                text = authErrorMessage ?: "",
+                                                fontFamily = HindSiliguriFamily,
+                                                fontSize = 12.5.sp,
+                                                color = colors.error,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "App SHA-1: $runtimeSha1",
+                                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                                fontSize = 10.sp,
+                                                color = colors.textSecondary
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                // Button to copy runtime SHA-1
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(colors.surfaceElevated)
+                                                        .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                                                        .clickable {
+                                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                            clipboard.setPrimaryClip(ClipData.newPlainText("SHA-1", runtimeSha1))
+                                                            Toast.makeText(context, "SHA-1 copied: $runtimeSha1", Toast.LENGTH_SHORT).show()
+                                                        }
+                                                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                                                ) {
                                                     Text(
-                                                        text = Strings.passwordLabel(selectedLanguage),
+                                                        text = "📋 Copy SHA-1",
                                                         fontFamily = HindSiliguriFamily,
-                                                        fontSize = 14.sp,
-                                                        color = colors.textSecondary
+                                                        fontSize = 11.5.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = colors.textPrimary
                                                     )
                                                 }
-                                                BasicTextField(
-                                                    value = passwordInput,
-                                                    onValueChange = { passwordInput = it },
-                                                    singleLine = true,
-                                                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                                                    textStyle = TextStyle(
+
+                                                // Quick bypass button: "Skip to Chat"
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(SolidButtonGreen)
+                                                        .clickable {
+                                                            onAnonymousSignIn("Friend") { _, _ -> }
+                                                        }
+                                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "🚀 Skip to Chat",
                                                         fontFamily = HindSiliguriFamily,
-                                                        fontSize = 14.sp,
-                                                        color = colors.textPrimary
-                                                    ),
-                                                    cursorBrush = SolidColor(colors.primary),
-                                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                                    modifier = Modifier.fillMaxWidth()
-                                                )
-                                            }
-                                            IconButton(
-                                                onClick = { isPasswordVisible = !isPasswordVisible },
-                                                modifier = Modifier.size(28.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                                    contentDescription = null,
-                                                    tint = colors.textSecondary,
-                                                    modifier = Modifier.size(18.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    if (authErrorMessage != null) {
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Text(
-                                            text = authErrorMessage ?: "",
-                                            fontFamily = HindSiliguriFamily,
-                                            fontSize = 12.sp,
-                                            color = colors.error
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(10.dp))
-
-                                    Button(
-                                        onClick = {
-                                            if (emailInput.isBlank() || passwordInput.length < 6) {
-                                                authErrorMessage = if (emailInput.isBlank()) "Please enter your email" else "Password must be at least 6 characters"
-                                                return@Button
-                                            }
-                                            isAuthLoading = true
-                                            authErrorMessage = null
-                                            if (isSignUpMode) {
-                                                onEmailSignUp(enteredName, emailInput, passwordInput) { ok, err ->
-                                                    isAuthLoading = false
-                                                    if (!ok) {
-                                                        authErrorMessage = err ?: "Sign up failed"
-                                                    }
-                                                }
-                                            } else {
-                                                onEmailSignIn(emailInput, passwordInput) { ok, err ->
-                                                    isAuthLoading = false
-                                                    if (!ok) {
-                                                        authErrorMessage = err ?: "Sign in failed"
-                                                    }
+                                                        fontSize = 11.5.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = Color.White
+                                                    )
                                                 }
                                             }
-                                        },
-                                        enabled = !isAuthLoading,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(48.dp),
-                                        shape = RoundedCornerShape(12.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = SolidButtonGreen,
-                                            contentColor = Color.White
-                                        )
-                                    ) {
-                                        if (isAuthLoading) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(20.dp),
-                                                color = Color.White,
-                                                strokeWidth = 2.dp
-                                            )
-                                        } else {
-                                            Text(
-                                                text = if (isSignUpMode) Strings.signUp(selectedLanguage) else Strings.signIn(selectedLanguage),
-                                                fontFamily = BalooDa2Family,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 15.sp,
-                                                color = Color.White
-                                            )
                                         }
                                     }
                                 }
-                            }
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                                Spacer(modifier = Modifier.height(18.dp))
 
-                            // Divider: "or" / "অথবা"
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                HorizontalDivider(
-                                    modifier = Modifier.weight(1f),
-                                    color = colors.border,
-                                    thickness = 1.dp
-                                )
+                                // Divider: "or" / "অথবা"
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.weight(1f),
+                                        color = colors.border,
+                                        thickness = 1.dp
+                                    )
+                                    Text(
+                                        text = Strings.orDivider(selectedLanguage),
+                                        fontFamily = HindSiliguriFamily,
+                                        fontSize = 13.sp,
+                                        color = colors.textSecondary,
+                                        modifier = Modifier.padding(horizontal = 14.dp)
+                                    )
+                                    HorizontalDivider(
+                                        modifier = Modifier.weight(1f),
+                                        color = colors.border,
+                                        thickness = 1.dp
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(18.dp))
+
+                                // Guest button: "Continue as guest" - Asking name on step 3
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(50.dp)
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(SolidButtonGreen)
+                                        .clickable {
+                                            pendingGoogleAccount = null
+                                            isGuestFlow = true
+                                            authErrorMessage = null
+                                            step = 3
+                                        }
+                                        .testTag("guest_login_btn"),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = Strings.continueAsGuest(selectedLanguage),
+                                        fontFamily = BalooDa2Family,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = Color.White
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                // Guest mode disclaimer
                                 Text(
-                                    text = Strings.orDivider(selectedLanguage),
+                                    text = Strings.guestModeDisclaimer(selectedLanguage),
                                     fontFamily = HindSiliguriFamily,
-                                    fontSize = 13.sp,
+                                    fontSize = 12.sp,
                                     color = colors.textSecondary,
-                                    modifier = Modifier.padding(horizontal = 14.dp)
+                                    textAlign = TextAlign.Center
                                 )
-                                HorizontalDivider(
-                                    modifier = Modifier.weight(1f),
-                                    color = colors.border,
-                                    thickness = 1.dp
-                                )
+
+                                Spacer(modifier = Modifier.height(20.dp))
+
+                                // Terms and Privacy clickable legal notice
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = if (selectedLanguage == "bn") "চালিয়ে যাওয়ার মাধ্যমে আপনি " else "By continuing, you accept our ",
+                                        fontFamily = HindSiliguriFamily,
+                                        fontSize = 11.5.sp,
+                                        color = colors.textSecondary
+                                    )
+                                    Text(
+                                        text = if (selectedLanguage == "bn") "শর্তাবলী" else "Terms",
+                                        fontFamily = HindSiliguriFamily,
+                                        fontSize = 11.5.sp,
+                                        color = colors.primary,
+                                        textDecoration = TextDecoration.Underline,
+                                        modifier = Modifier.clickable { openBrowser(Strings.TERMS_URL) }
+                                    )
+                                    Text(
+                                        text = if (selectedLanguage == "bn") " ও " else " & ",
+                                        fontFamily = HindSiliguriFamily,
+                                        fontSize = 11.5.sp,
+                                        color = colors.textSecondary
+                                    )
+                                    Text(
+                                        text = if (selectedLanguage == "bn") "গোপনীয়তা নীতি" else "Privacy Policy",
+                                        fontFamily = HindSiliguriFamily,
+                                        fontSize = 11.5.sp,
+                                        color = colors.primary,
+                                        textDecoration = TextDecoration.Underline,
+                                        modifier = Modifier.clickable { openBrowser(Strings.PRIVACY_URL) }
+                                    )
+                                }
                             }
 
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            // Guest button: "Continue as guest" - Fully opaque solid green
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(50.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(SolidButtonGreen)
-                                    .clickable {
-                                        // Trigger anonymous Firebase login in background
-                                        onAnonymousSignIn { _, _ -> }
-                                        step = 4
-                                    }
-                                    .testTag("guest_login_btn"),
-                                contentAlignment = Alignment.Center
-                            ) {
+                            // ── STEP 3: NAME (FOR NEW GOOGLE USER OR GUEST) ──
+                            3 -> {
                                 Text(
-                                    text = Strings.continueAsGuest(selectedLanguage),
+                                    text = Strings.onboardingStep2Title(selectedLanguage),
                                     fontFamily = BalooDa2Family,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = Color.White
+                                    fontSize = 28.sp,
+                                    color = colors.textPrimary,
+                                    textAlign = TextAlign.Center
                                 )
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            // Below: "Guest mode: credits & history stored on this device"
-                            Text(
-                                text = Strings.guestModeDisclaimer(selectedLanguage),
-                                fontFamily = HindSiliguriFamily,
-                                fontSize = 12.sp,
-                                color = colors.textSecondary,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-
-                        // ── STEP 4: PRIVACY & TERMS ──
-                        4 -> {
-                            Text(
-                                text = Strings.onboardingStep4Title(selectedLanguage),
-                                fontFamily = BalooDa2Family,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 28.sp,
-                                color = colors.textPrimary,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = Strings.onboardingStep4Sub(selectedLanguage),
-                                fontFamily = HindSiliguriFamily,
-                                fontSize = 14.sp,
-                                color = colors.textSecondary,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(28.dp))
-
-                            // Checkbox 1: Privacy Policy
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null
-                                    ) { acceptedPrivacy = !acceptedPrivacy }
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = acceptedPrivacy,
-                                    onCheckedChange = { acceptedPrivacy = it },
-                                    colors = CheckboxDefaults.colors(
-                                        checkedColor = colors.primary,
-                                        uncheckedColor = colors.textSecondary,
-                                        checkmarkColor = colors.onPrimary
-                                    )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = if (selectedLanguage == "bn") "বন্ধু তোমাকে এই নামে ডাকবে" else "Bondhu will call you by this name",
+                                    fontFamily = HindSiliguriFamily,
+                                    fontSize = 14.sp,
+                                    color = colors.textSecondary,
+                                    textAlign = TextAlign.Center
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
+                                Spacer(modifier = Modifier.height(20.dp))
+
+                                // Live Interactive Avatar Preview with dynamic initial
+                                Box(
+                                    modifier = Modifier
+                                        .size(68.dp)
+                                        .clip(CircleShape)
+                                        .background(SolidButtonGreen)
+                                        .border(2.5.dp, colors.border, CircleShape)
+                                        .testTag("onboarding_avatar_preview"),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = "I accept the ",
-                                        fontFamily = HindSiliguriFamily,
-                                        fontSize = 14.sp,
-                                        color = colors.textPrimary
-                                    )
-                                    Text(
-                                        text = "Privacy Policy",
-                                        fontFamily = HindSiliguriFamily,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 14.sp,
-                                        color = colors.primary,
-                                        textDecoration = TextDecoration.Underline,
-                                        modifier = Modifier.clickable {
-                                            openBrowser(Strings.PRIVACY_URL)
-                                        }
-                                    )
+                                    val displayInitial = enteredName.trim().firstOrNull()?.uppercaseChar()
+                                    if (displayInitial != null) {
+                                        Text(
+                                            text = "$displayInitial",
+                                            fontFamily = BalooDa2Family,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 28.sp,
+                                            color = Color.White
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = "Avatar",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(34.dp)
+                                        )
+                                    }
                                 }
-                            }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
 
-                            // Checkbox 2: Terms of Service
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null
-                                    ) { acceptedTerms = !acceptedTerms }
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = acceptedTerms,
-                                    onCheckedChange = { acceptedTerms = it },
-                                    colors = CheckboxDefaults.colors(
-                                        checkedColor = colors.primary,
-                                        uncheckedColor = colors.textSecondary,
-                                        checkmarkColor = colors.onPrimary
-                                    )
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
+                                // Input: surfaceElevated bg, 2px border, 12dp radius, centered text
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .offset { IntOffset(shakeOffset.value.roundToInt(), 0) }
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(colors.surfaceElevated)
+                                        .border(
+                                            width = 2.dp,
+                                            color = if (nameError) colors.error else colors.border,
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = "I accept the ",
-                                        fontFamily = HindSiliguriFamily,
-                                        fontSize = 14.sp,
-                                        color = colors.textPrimary
-                                    )
-                                    Text(
-                                        text = "Terms of Service",
-                                        fontFamily = HindSiliguriFamily,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 14.sp,
-                                        color = colors.primary,
-                                        textDecoration = TextDecoration.Underline,
-                                        modifier = Modifier.clickable {
-                                            openBrowser(Strings.TERMS_URL)
-                                        }
+                                    if (enteredName.isEmpty()) {
+                                        Text(
+                                            text = Strings.onboardingStep2Placeholder(selectedLanguage),
+                                            fontFamily = HindSiliguriFamily,
+                                            fontSize = 16.sp,
+                                            color = colors.textSecondary,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                    BasicTextField(
+                                        value = enteredName,
+                                        onValueChange = {
+                                            enteredName = it
+                                            if (nameError && it.isNotBlank()) {
+                                                nameError = false
+                                            }
+                                        },
+                                        singleLine = true,
+                                        textStyle = TextStyle(
+                                            fontFamily = BalooDa2Family,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 18.sp,
+                                            color = colors.textPrimary,
+                                            textAlign = TextAlign.Center
+                                        ),
+                                        cursorBrush = SolidColor(colors.primary),
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                        keyboardActions = KeyboardActions(
+                                            onDone = {
+                                                if (enteredName.trim().isEmpty()) {
+                                                    nameError = true
+                                                    triggerShake()
+                                                    Toast.makeText(
+                                                        context,
+                                                        Strings.onboardingStep2Validation(selectedLanguage),
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                } else {
+                                                    isAuthLoading = true
+                                                    val cleanName = enteredName.trim()
+                                                    if (pendingGoogleAccount != null) {
+                                                        onGoogleSignInSuccess(pendingGoogleAccount!!, cleanName) { ok, err ->
+                                                            isAuthLoading = false
+                                                            if (!ok && err != null) {
+                                                                authErrorMessage = err
+                                                                Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        }
+                                                    } else {
+                                                        onAnonymousSignIn(cleanName) { ok, err ->
+                                                            isAuthLoading = false
+                                                            if (!ok && err != null) {
+                                                                Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .testTag("name_input_field")
                                     )
                                 }
                             }
                         }
                     }
                 }
-            }
 
-                // Bottom Portion: Primary Action Button & 4 Progress Dots
+                // Bottom Portion: Primary Action Button & Progress Dots
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -1078,6 +788,19 @@ fun OnboardingScreen(
                         }
 
                         2 -> {
+                            // Back button to return to Language selection
+                            Text(
+                                text = Strings.back(selectedLanguage),
+                                fontFamily = HindSiliguriFamily,
+                                fontSize = 14.sp,
+                                color = colors.textSecondary,
+                                modifier = Modifier
+                                    .clickable { step = 1 }
+                                    .padding(8.dp)
+                            )
+                        }
+
+                        3 -> {
                             Button(
                                 onClick = {
                                     if (enteredName.trim().isEmpty()) {
@@ -1089,60 +812,27 @@ fun OnboardingScreen(
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     } else {
-                                        step = 3
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(52.dp)
-                                    .testTag("onboarding_next_2"),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = SolidButtonGreen,
-                                    contentColor = Color.White
-                                )
-                            ) {
-                                Text(
-                                    text = Strings.next(selectedLanguage),
-                                    fontFamily = BalooDa2Family,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    color = Color.White
-                                )
-                            }
-                        }
-
-                        3 -> {
-                            // On Step 3 the action buttons are Google, Email, and Guest mode
-                            // Subtle "Back" button to return to name step if needed
-                            Text(
-                                text = Strings.back(selectedLanguage),
-                                fontFamily = HindSiliguriFamily,
-                                fontSize = 14.sp,
-                                color = colors.textSecondary,
-                                modifier = Modifier
-                                    .clickable { step = 2 }
-                                    .padding(8.dp)
-                            )
-                        }
-
-                        4 -> {
-                            Button(
-                                onClick = {
-                                    if (acceptedPrivacy && acceptedTerms) {
-                                        val finalName = enteredName.trim().ifBlank {
-                                            if (selectedLanguage == "bn") "বন্ধু" else "Friend"
+                                        isAuthLoading = true
+                                        val cleanName = enteredName.trim()
+                                        if (pendingGoogleAccount != null) {
+                                            onGoogleSignInSuccess(pendingGoogleAccount!!, cleanName) { ok, err ->
+                                                isAuthLoading = false
+                                                if (!ok && err != null) {
+                                                    authErrorMessage = err
+                                                    Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        } else {
+                                            onAnonymousSignIn(cleanName) { ok, err ->
+                                                isAuthLoading = false
+                                                if (!ok && err != null) {
+                                                    Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
                                         }
-                                        onFinishOnboarding(finalName)
-                                    } else {
-                                        triggerShake()
-                                        Toast.makeText(
-                                            context,
-                                            if (selectedLanguage == "bn") "দয়া করে গোপনীয়তা নীতি ও ব্যবহারের শর্তাবলী গ্রহণ করুন" else "Please accept Privacy Policy and Terms of Service to continue",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
                                     }
                                 },
+                                enabled = !isAuthLoading,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(52.dp)
@@ -1153,25 +843,49 @@ fun OnboardingScreen(
                                     contentColor = Color.White
                                 )
                             ) {
-                                Text(
-                                    text = Strings.getStarted(selectedLanguage),
-                                    fontFamily = BalooDa2Family,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    color = Color.White
-                                )
+                                if (isAuthLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(22.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text(
+                                        text = Strings.getStarted(selectedLanguage),
+                                        fontFamily = BalooDa2Family,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = Color.White
+                                    )
+                                }
                             }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Back to Step 2
+                            Text(
+                                text = Strings.back(selectedLanguage),
+                                fontFamily = HindSiliguriFamily,
+                                fontSize = 14.sp,
+                                color = colors.textSecondary,
+                                modifier = Modifier
+                                    .clickable {
+                                        step = 2
+                                        authErrorMessage = null
+                                    }
+                                    .padding(8.dp)
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    // 4 Progress Dots
+                    // Progress Dots
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        for (i in 1..4) {
+                        for (i in 1..totalSteps) {
                             val isActive = i == currentStep
                             Box(
                                 modifier = Modifier
@@ -1197,6 +911,7 @@ fun OnboardingScreen(
 @Composable
 fun OnboardingExplanationCard(
     currentStep: Int,
+    totalSteps: Int = 2,
     selectedLanguage: String,
     modifier: Modifier = Modifier
 ) {
@@ -1205,16 +920,16 @@ fun OnboardingExplanationCard(
 
     val guidanceText = when (currentStep) {
         1 -> if (isBn) "এগিয়ে যেতে আপনার পছন্দের ভাষা নির্বাচন করুন" else "Choose your preferred language to continue"
-        2 -> if (isBn) "ব্যক্তিগত অভিজ্ঞতার জন্য আপনার নাম লিখুন" else "Enter your name to personalize your experience"
-        3 -> if (isBn) "চ্যাট ইতিহাস সংরক্ষণ করতে সাইন ইন করুন বা সরাসরি চালিয়ে যান" else "Sign in to save chat history, or continue as guest"
-        else -> if (isBn) "শুরু করতে গোপনীয়তা নীতি ও ব্যবহারের শর্তাবলীতে সম্মতি দিন" else "Agree to Privacy Policy & Terms of Service to start"
+        2 -> if (isBn) "চ্যাট ইতিহাস সংরক্ষণ করতে সাইন ইন করুন বা গেস্ট হিসেবে প্রবেশ করুন" else "Sign in to save chat history, or continue as guest"
+        else -> if (isBn) "ব্যক্তিগত অভিজ্ঞতার জন্য আপনার নাম লিখুন" else "Enter your name to personalize your experience"
     }
 
-    val stepBadge = when (currentStep) {
-        1 -> if (isBn) "ধাপ ১/৪" else "Step 1/4"
-        2 -> if (isBn) "ধাপ ২/৪" else "Step 2/4"
-        3 -> if (isBn) "ধাপ ৩/৪" else "Step 3/4"
-        else -> if (isBn) "ধাপ ৪/৪" else "Step 4/4"
+    val stepBadge = when {
+        totalSteps == 2 && currentStep == 1 -> if (isBn) "ধাপ ১/২" else "Step 1/2"
+        totalSteps == 2 && currentStep == 2 -> if (isBn) "ধাপ ২/২" else "Step 2/2"
+        currentStep == 1 -> if (isBn) "ধাপ ১/৩" else "Step 1/3"
+        currentStep == 2 -> if (isBn) "ধাপ ২/৩" else "Step 2/3"
+        else -> if (isBn) "ধাপ ৩/৩" else "Step 3/3"
     }
 
     Box(
@@ -1272,4 +987,3 @@ fun OnboardingExplanationCard(
         }
     }
 }
-

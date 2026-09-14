@@ -56,21 +56,16 @@ fun BondhuApp(
                             currentLanguage = uiState.language,
                             onLanguageChange = { lang -> viewModel.setLanguage(lang) },
                             onFinishOnboarding = { name -> viewModel.completeOnboarding(name) },
-                            onGoogleSignInSuccess = { account ->
-                                viewModel.signInWithGoogleAccount(account) { success, err ->
+                            onGoogleSignInSuccess = { account, customName, onResult ->
+                                viewModel.signInWithGoogleAccount(account, customName) { success, err ->
+                                    onResult(success, err)
                                     if (!success && err != null) {
                                         viewModel.showToast(err)
                                     }
                                 }
                             },
-                            onEmailSignIn = { email, pass, onResult ->
-                                viewModel.signInWithEmail(email = email, pass = pass, onResult = onResult)
-                            },
-                            onEmailSignUp = { name, email, pass, onResult ->
-                                viewModel.signUpWithEmail(name = name, email = email, pass = pass, onResult = onResult)
-                            },
-                            onAnonymousSignIn = { onResult ->
-                                viewModel.signInAnonymously(onResult = onResult)
+                            onAnonymousSignIn = { name, onResult ->
+                                viewModel.signInAnonymously(name = name, onResult = onResult)
                             }
                         )
                     }

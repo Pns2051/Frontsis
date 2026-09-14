@@ -341,7 +341,7 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun signInWithGoogleAccount(account: GoogleSignInAccount, onResult: (Boolean, String?) -> Unit) {
+    fun signInWithGoogleAccount(account: GoogleSignInAccount, customName: String? = null, onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
             val googleName = account.displayName?.ifBlank { null } ?: "User"
             val googleEmail = account.email ?: ""
@@ -354,12 +354,21 @@ class BondhuViewModel(application: Application) : AndroidViewModel(application) 
 
             val result = AuthManager.signInWithGoogleCredential(account)
             result.onSuccess { user ->
-                // Preserve existing account display name if present, otherwise use Google name
+                // Preserve existing account display name if present, otherwise use customName, or Google name
                 val userName = when {
-                    !user.displayName.isNullOrBlank() -> user.displayName!!.trim()
-                    !account.displayName.isNullOrBlank() -> account.displayName!!.trim()
-                    prefs.getUserName().isNotBlank() && prefs.getUserName() != "User" -> prefs.getUserName()
+                    !customName.isNullOrBlank() -> customName.trim()
+                    !user.displayName.isNullOrBlank() && !user.displayName!!.equals("User", ignoreCase = true) -> user.displayName!!.trim()
+                    !account.displayName.isNullOrBlank() && !account.displayName!!.equals("User", ignoreCase = true) -> account.displayName!!.trim()
+                    prefs.getUserName().isNotBlank() && prefs.getUserName() != "User" && prefs.getUserName() != "বন্ধু" -> prefs.getUserName()
                     else -> googleName
+                }
+                if (!customName.isNullOrBlank()) {
+                    try {
+                        val updateReq = UserProfileChangeRequest.Builder()
+                            .setDisplayName(userName)
+                            .build()
+                        user.updateProfile(updateReq).await()
+                    } catch (_: Exception) {}
                 }
                 val userEmail = user.email?.ifBlank { null } ?: googleEmail
                 prefs.setUserName(userName)
